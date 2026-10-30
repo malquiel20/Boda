@@ -1,0 +1,104 @@
+/* Estilos del panel de los novios (admin.html). Usa las variables de estilos.css. */
+
+body.admin { background: var(--papel); font-family: var(--fuente-sans); font-size: 0.95rem; line-height: 1.5; }
+
+.admin-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 2rem 1.25rem 1.5rem;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.admin-cabecera h1 { font-family: var(--fuente-script); font-weight: 400; font-size: clamp(2.4rem, 9vw, 3.2rem); line-height: 1.1; color: var(--oliva-oscuro); }
+.admin-modo { margin-top: 0.3rem; font-size: 0.82rem; color: var(--tinta-suave); }
+
+.admin-main { display: grid; gap: 1.25rem; max-width: 1080px; margin: 0 auto; padding: 0 1rem 4rem; }
+.admin-panel { padding: 1.5rem 1.25rem; border-radius: 18px; background: var(--blanco); box-shadow: 0 16px 36px -30px rgba(55, 54, 47, 0.6); min-width: 0; }
+.admin-panel-cabecera { margin-bottom: 1.2rem; }
+.admin-panel-cabecera h2 { font-family: var(--fuente-serif); font-size: 1.6rem; font-weight: 600; line-height: 1.2; color: var(--oliva-oscuro); }
+.admin-panel-cabecera p { margin-top: 0.35rem; color: var(--tinta-suave); }
+.admin-subtitulo { margin: 1.5rem 0 0.6rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--oliva); }
+.admin-etiqueta, .admin-conexion label { display: block; margin: 0.8rem 0 0.4rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--oliva); }
+.admin-fila { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; }
+.admin-conexion .admin-fila { margin-top: 0; }
+.admin-estado { margin-top: 0.8rem; font-size: 0.85rem; color: var(--tinta-suave); }
+.admin-vacio { padding: 1rem; border-radius: 12px; background: var(--papel); color: var(--tinta-suave); }
+.admin-lista { margin: 0.6rem 0 0; padding-left: 1.2rem; color: var(--tinta-suave); }
+.admin code { padding: 0.1rem 0.35rem; border-radius: 6px; background: var(--papel); font-size: 0.82em; }
+
+.admin input, .admin select, .admin textarea {
+  min-height: 46px;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--tinta);
+  font-family: var(--fuente-sans);
+  font-size: 1rem;
+}
+.admin textarea { width: 100%; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 0.85rem; line-height: 1.5; }
+.admin-conexion input { flex: 1 1 220px; }
+
+.boton-mini { min-height: 38px; padding: 0.45rem 0.85rem; font-size: 0.66rem; letter-spacing: 0.1em; }
+.boton-mini .icono { width: 16px; height: 16px; }
+
+/* Resumen */
+.resumen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+.resumen-tarjeta { display: flex; flex-direction: column; padding: 1rem; border: 1px solid var(--linea); border-radius: 14px; background: var(--marfil); }
+.resumen-tarjeta.destacado { border-color: var(--oliva); background: var(--oliva); color: #fff; }
+.resumen-num { font-family: var(--fuente-serif); font-size: 2.4rem; font-weight: 600; line-height: 1; }
+.resumen-titulo { margin-top: 0.3rem; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.resumen-detalle { font-size: 0.8rem; opacity: 0.8; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.etiquetas li { padding: 0.4rem 0.8rem; border-radius: 999px; background: var(--papel); font-size: 0.85rem; }
+
+/* Invitados */
+.admin-herramientas { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+.admin-herramientas input { flex: 1 1 220px; }
+.lista-invitados { display: grid; gap: 0.6rem; }
+.fila-invitado {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  background: #fff;
+}
+.fila-info { min-width: 0; }
+.fila-info h3 { font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+.fila-meta { font-size: 0.8rem; color: var(--tinta-suave); overflow-wrap: anywhere; }
+.fuera { padding: 0.1rem 0.45rem; border-radius: 6px; background: #f7e7e9; color: var(--vino); font-size: 0.7rem; font-weight: 500; }
+.estado { justify-self: end; padding: 0.3rem 0.7rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.estado-pendiente { background: #f3ecdf; color: #8a6d3b; }
+.estado-si { background: #e6ecd9; color: var(--oliva-oscuro); }
+.estado-no { background: #f5e4e6; color: var(--vino); }
+.fila-acciones { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.detalle { grid-column: 1 / -1; font-size: 0.88rem; }
+.detalle summary { cursor: pointer; color: var(--oliva); font-weight: 500; }
+.detalle ul { margin: 0.4rem 0; padding-left: 1.2rem; }
+.detalle blockquote, .mensaje blockquote { margin: 0.5rem 0 0; padding: 0.6rem 0.9rem; border-left: 3px solid var(--dorado-claro); background: var(--marfil); font-family: var(--fuente-serif); font-size: 1.05rem; font-style: italic; }
+
+/* Mensajes */
+#mensajes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem; }
+.mensaje { padding: 1rem; border: 1px solid var(--linea); border-radius: 14px; background: #fff; }
+.mensaje-autor { font-size: 0.78rem; font-weight: 600; color: var(--oliva); }
+.mensaje-cancion { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 0.85rem; color: var(--tinta-suave); }
+
+/* QR */
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.qr-item { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 1.2rem; border: 1px solid var(--linea); border-radius: 14px; text-align: center; }
+.qr-item img { width: 180px; height: 180px; image-rendering: pixelated; }
+.qr-item h3 { margin-top: 0.4rem; font-family: var(--fuente-serif); font-size: 1.25rem; font-weight: 600; }
+.qr-item p { font-size: 0.82rem; color: var(--tinta-suave); }
+.qr-item .boton { margin-top: 0.5rem; }
+
+@media (min-width: 760px) {
+  .admin-panel { padding: 2rem; }
+  .fila-invitado { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .fila-acciones { grid-column: auto; }
+}

@@ -237,6 +237,43 @@ body.panel-cerrado .pestanas, body.panel-cerrado .panel-main, body.panel-cerrado
 }
 
 /* ---------- Invitados ---------- */
+.boton-agregar { width: 100%; margin-top: 0; }
+.boton-agregar .icono { width: 20px; height: 20px; }
+
+.form-invitado { display: grid; gap: 1rem; border: 2px solid var(--oliva); }
+.form-invitado .tarjeta-titulo { margin-bottom: 0; }
+.campo-panel { display: grid; gap: 0.4rem; }
+.campo-panel label, .etiqueta-panel { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--oliva); }
+.campo-panel .opcional { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--tinta-suave); }
+.campo-panel input { width: 100%; }
+.ayuda-panel { font-size: 0.8rem; color: var(--tinta-suave); }
+.contador-cupos { display: flex; align-items: center; gap: 0.6rem; }
+.contador-cupos input { width: 5.5rem; min-height: 56px; text-align: center; font-size: 1.5rem; font-weight: 600; color: var(--oliva-oscuro); -moz-appearance: textfield; }
+.contador-cupos input::-webkit-outer-spin-button, .contador-cupos input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.paso {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border: 1px solid var(--oliva);
+  border-radius: 50%;
+  background: var(--blanco);
+  color: var(--oliva-oscuro);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.paso:hover { background: var(--oliva); color: #fff; }
+
+.listo-invitado { display: grid; justify-items: center; gap: 0.6rem; border: 2px solid var(--oliva); text-align: center; }
+.listo-invitado h3 { font-family: var(--fuente-serif); font-size: 1.45rem; font-weight: 600; line-height: 1.2; color: var(--oliva-oscuro); }
+.listo-invitado p { color: var(--tinta-suave); }
+.listo-invitado .boton-grande { width: 100%; margin-top: 0.3rem; }
+.listo-invitado .admin-fila { justify-content: center; margin-top: 0.2rem; }
+.listo-icono { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #e3ead3; color: var(--oliva-oscuro); }
+.listo-icono .icono { width: 26px; height: 26px; }
+
 .buscador { width: 100%; }
 .filtros { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .filtro {

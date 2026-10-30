@@ -31,6 +31,7 @@ window.BODA = {
   fechaFin: "2027-09-19T02:00:00-05:00",   // se usa para el calendario
   zonaHoraria: "America/Bogota",           // para mostrar la fecha correcta
   ciudad: "Bogotá, Colombia",
+  codigoPais: "57",                        // para WhatsApp: 57 Colombia, 52 México, 51 Perú, 593 Ecuador
 
   // ---------------------------------------------------------------
   // Sobre de bienvenida (se abre al tocar el sello)

@@ -176,9 +176,18 @@
     return "https://www.google.com/maps?q=" + encodeURIComponent(consultaLugar(evento)) + "&output=embed";
   }
 
+  // "300 123 4567" -> "573001234567" (agrega el código de país de config.js)
+  function telefonoWhatsApp(numero) {
+    let limpio = String(numero || "").replace(/\D/g, "");
+    const pais = String(BODA.codigoPais || "").replace(/\D/g, "");
+    if (limpio && pais && limpio.length <= 10 && String(numero).trim().charAt(0) !== "+") {
+      limpio = pais + limpio.replace(/^0+/, "");
+    }
+    return limpio;
+  }
+
   function enlaceWhatsApp(numero, texto) {
-    const limpio = String(numero || "").replace(/\D/g, "");
-    return "https://wa.me/" + limpio + "?text=" + encodeURIComponent(texto);
+    return "https://wa.me/" + telefonoWhatsApp(numero) + "?text=" + encodeURIComponent(texto);
   }
 
   // ---------- Calendario ----------
@@ -244,10 +253,36 @@
   }
 
   // ---------- Invitados ----------
+  // Sin Google Sheets, los invitados agregados desde el panel se guardan en
+  // este navegador (sirve para probar desde el mismo dispositivo).
+  const CLAVE_INVITADOS_LOCALES = "boda-invitados";
+
+  function invitadosLocales() {
+    const lista = leer(CLAVE_INVITADOS_LOCALES, []);
+    return Array.isArray(lista) ? lista : [];
+  }
+
+  // Lista del archivo js/invitados.js más los agregados en este navegador
+  function todosLosInvitados() {
+    const vistos = {};
+    return INVITADOS.concat(invitadosLocales()).filter(function (i) {
+      const c = String(i.codigo || "").toLowerCase();
+      if (!c || vistos[c]) return false;
+      vistos[c] = true;
+      return true;
+    });
+  }
+
   function buscarInvitado(codigo) {
     if (!codigo) return null;
     const c = String(codigo).toLowerCase();
-    return INVITADOS.find(function (i) { return String(i.codigo).toLowerCase() === c; }) || null;
+    return todosLosInvitados().find(function (i) { return String(i.codigo).toLowerCase() === c; }) || null;
+  }
+
+  function codigoParaInvitado(nombre, usados) {
+    let codigo;
+    do { codigo = (slug(nombre) || "invitado") + "-" + codigoAleatorio(4); } while (usados && usados[codigo]);
+    return codigo;
   }
 
   function codigoDeLaUrl() {
@@ -358,6 +393,11 @@
     descargarICS: descargarICS,
     descargarArchivo: descargarArchivo,
     buscarInvitado: buscarInvitado,
+    todosLosInvitados: todosLosInvitados,
+    invitadosLocales: invitadosLocales,
+    CLAVE_INVITADOS_LOCALES: CLAVE_INVITADOS_LOCALES,
+    codigoParaInvitado: codigoParaInvitado,
+    telefonoWhatsApp: telefonoWhatsApp,
     codigoDeLaUrl: codigoDeLaUrl,
     leer: leer,
     guardar: guardar,

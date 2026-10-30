@@ -20,7 +20,29 @@
   const modoGoogle = !!R.urlGoogleScript;
 
   let respuestas = [];
+  let invitadosServidor = [];
   let filtro = "todos";
+
+  // Invitados: los del archivo js/invitados.js + los agregados desde el panel
+  // (en Google Sheets o, en modo de prueba, en este navegador)
+  function listaInvitados() {
+    const extra = modoGoogle ? invitadosServidor : U.invitadosLocales();
+    const vistos = {};
+    return U.INVITADOS.concat(extra).filter(function (i) {
+      const c = String(i.codigo || "").toLowerCase();
+      if (!c || vistos[c]) return false;
+      vistos[c] = true;
+      return true;
+    });
+  }
+
+  function editable(i) {
+    return !!i.codigo && !U.INVITADOS.some(function (x) { return x.codigo === i.codigo; });
+  }
+
+  function claveGuardada() {
+    try { return window.sessionStorage.getItem(CLAVE_SESION) || ""; } catch (e) { return ""; }
+  }
 
   function plural(n, uno, varios) { return n + " " + (n === 1 ? uno : varios); }
 
@@ -77,6 +99,7 @@
         if (!res.ok) throw new Error(res.error || "Error desconocido");
         try { window.sessionStorage.setItem(CLAVE_SESION, clave); } catch (e) { /* sin almacenamiento */ }
         respuestas = res.respuestas || [];
+        invitadosServidor = res.invitados || [];
         abrirPanel();
         estado("Actualizado a las " + new Date().toLocaleTimeString("es", { hour: "numeric", minute: "2-digit" }));
         pintarTodo();
@@ -102,8 +125,7 @@
       U.aviso("Respuestas actualizadas");
       return;
     }
-    let clave = "";
-    try { clave = window.sessionStorage.getItem(CLAVE_SESION) || ""; } catch (e) { clave = ""; }
+    const clave = claveGuardada();
     if (clave) cargarGoogle(clave); else cerrarPanel();
   }
 
@@ -136,7 +158,7 @@
   function filas() {
     const m = mapaRespuestas();
     const usadas = {};
-    const lista = U.INVITADOS.map(function (i) {
+    const lista = listaInvitados().map(function (i) {
       const k = claveDe({ codigo: i.codigo });
       let r = m[k];
       if (!r) {
@@ -273,12 +295,13 @@
     // ¿Qué sigue?
     const tareas = [];
     const yaEnviadas = Object.keys(enviadas()).length;
-    if (!U.INVITADOS.length) {
-      tareas.push({ icono: "agregar", texto: "Todavía no hay invitados en la lista.", boton: "Agregar invitados", ir: "herramientas" });
+    const hayInvitados = listaInvitados().length > 0;
+    if (!hayInvitados) {
+      tareas.push({ icono: "agregar", texto: "Agrega a tus invitados: el nombre de cada familia o persona y cuántos pueden ir.", boton: "Agregar invitados", ir: "invitados", accion: "agregar" });
     } else if (!yaEnviadas && c.pendientes) {
       tareas.push({ icono: "chat", texto: "Envía a cada invitado su invitación personal por WhatsApp.", boton: "Enviar invitaciones", ir: "invitados", filtro: "todos" });
     }
-    if (c.pendientes && U.INVITADOS.length) {
+    if (c.pendientes && hayInvitados) {
       tareas.push({ icono: "campana", texto: plural(c.pendientes, "invitación sigue", "invitaciones siguen") + " sin responder. Puedes enviarles un recordatorio.", boton: "Ver pendientes", ir: "invitados", filtro: "pendiente" });
     }
     if (c.personas) {
@@ -287,12 +310,12 @@
     if (!modoGoogle) {
       tareas.push({ icono: "enlace", texto: "Estás en modo de prueba. Conecta Google Sheets para recibir las respuestas de tus invitados.", boton: "Ver cómo", ir: "herramientas" });
     }
-    if (U.INVITADOS.length && !c.pendientes) {
+    if (hayInvitados && !c.pendientes) {
       tareas.unshift({ icono: "check", texto: "¡Todas las invitaciones ya respondieron!" });
     }
     $("#que-sigue").innerHTML = '<h3 class="tarjeta-titulo">¿Qué sigue?</h3><ul class="tareas">' + tareas.map(function (t) {
       return '<li><span class="tarea-icono">' + icono(t.icono) + "</span><span class=\"tarea-texto\">" + esc(t.texto) + "</span>" +
-        (t.boton ? '<button type="button" class="boton boton-claro boton-mini" data-ir="' + t.ir + '"' + (t.filtro ? ' data-filtro-ir="' + t.filtro + '"' : "") + ">" + esc(t.boton) + "</button>" : "") +
+        (t.boton ? '<button type="button" class="boton boton-claro boton-mini" data-ir="' + t.ir + '"' + (t.filtro ? ' data-filtro-ir="' + t.filtro + '"' : "") + (t.accion ? ' data-accion="' + t.accion + '"' : "") + ">" + esc(t.boton) + "</button>" : "") +
         "</li>";
     }).join("") + "</ul>";
 
@@ -365,7 +388,7 @@
     $$(".invitado-detalle:not([hidden])").forEach(function (d) { abiertos[d.dataset.clave] = true; });
 
     if (!visibles.length) {
-      $("#lista-invitados").innerHTML = '<p class="vacio">' + (U.INVITADOS.length ? "No hay invitados en este grupo." : "Todavía no hay invitados. Agrégalos en Herramientas.") + "</p>";
+      $("#lista-invitados").innerHTML = '<p class="vacio">' + (listaInvitados().length ? "No hay invitados en este grupo." : "Todavía no hay invitados. Toca <strong>Agregar invitado</strong> para empezar.") + "</p>";
       return;
     }
 
@@ -397,6 +420,8 @@
             icono("campana") + "<span>Enviar recordatorio</span></a>" : "") +
           '<button type="button" class="boton boton-claro boton-mini" data-copiar="' + esc(U.enlaceInvitado(i.codigo)) + '">' + icono("copiar") + "<span>Copiar enlace</span></button>" +
           '<a class="boton boton-claro boton-mini" ' + atributosVer(i) + ">" + icono("enlace") + "<span>Ver su invitación</span></a>" +
+          (editable(i) ? '<button type="button" class="boton boton-claro boton-mini" data-editar="' + esc(i.codigo) + '">' + icono("ajustes") + "<span>Editar</span></button>" +
+            '<button type="button" class="boton boton-claro boton-mini" data-eliminar="' + esc(i.codigo) + '">' + icono("basura") + "<span>Eliminar</span></button>" : "") +
           "</div>" +
           (enviada ? '<p class="det-nota">Invitación enviada desde este dispositivo el ' + esc(new Date(enviada).toLocaleDateString("es", { day: "numeric", month: "long" })) + ".</p>" : "")
           : "") +
@@ -515,45 +540,182 @@
     ponerIconosTitulos();
   }
 
-  function generar() {
-    const lineas = $("#gen-entrada").value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
-    const existentes = {};
-    U.INVITADOS.forEach(function (i) { existentes[String(i.nombre).trim().toLowerCase()] = i.codigo; });
-    const usados = {};
-    const resultado = [];
+  // =================================================================
+  //  AGREGAR, EDITAR Y ELIMINAR INVITADOS
+  // =================================================================
+  function enviarAlScript(datos) {
+    return fetch(R.urlGoogleScript, { method: "POST", body: JSON.stringify(datos) })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.error || "Error desconocido");
+        return res;
+      });
+  }
 
+  // Crea o actualiza invitados (en Google Sheets o en este navegador)
+  function guardarInvitados(nuevos) {
+    if (modoGoogle) {
+      return enviarAlScript({ accion: "guardarInvitados", clave: claveGuardada(), invitados: nuevos }).then(function (res) {
+        res.invitados.forEach(function (g) {
+          const n = invitadosServidor.findIndex(function (x) { return x.codigo === g.codigo; });
+          if (n >= 0) invitadosServidor[n] = g; else invitadosServidor.push(g);
+        });
+        return res.invitados;
+      });
+    }
+    const lista = U.invitadosLocales();
+    const usados = {};
+    listaInvitados().forEach(function (i) { usados[i.codigo] = true; });
+    const guardados = nuevos.map(function (x) {
+      const limpio = {
+        codigo: x.codigo || "",
+        nombre: String(x.nombre).trim(),
+        cupos: Math.min(30, Math.max(1, Math.round(Number(x.cupos) || 1))),
+        telefono: String(x.telefono || "").trim(),
+      };
+      const n = limpio.codigo ? lista.findIndex(function (y) { return y.codigo === limpio.codigo; }) : -1;
+      if (n >= 0) {
+        lista[n] = limpio;
+      } else {
+        limpio.codigo = U.codigoParaInvitado(limpio.nombre, usados);
+        usados[limpio.codigo] = true;
+        lista.push(limpio);
+      }
+      return limpio;
+    });
+    U.guardar(U.CLAVE_INVITADOS_LOCALES, lista);
+    return Promise.resolve(guardados);
+  }
+
+  function borrarInvitado(codigo) {
+    if (modoGoogle) {
+      return enviarAlScript({ accion: "borrarInvitado", clave: claveGuardada(), codigo: codigo }).then(function () {
+        invitadosServidor = invitadosServidor.filter(function (x) { return x.codigo !== codigo; });
+      });
+    }
+    U.guardar(U.CLAVE_INVITADOS_LOCALES, U.invitadosLocales().filter(function (x) { return x.codigo !== codigo; }));
+    return Promise.resolve();
+  }
+
+  function abrirFormulario(inv) {
+    $("#form-invitado-titulo").textContent = inv ? "Editar invitado" : "Nuevo invitado";
+    $("#inv-codigo").value = inv ? inv.codigo : "";
+    $("#inv-nombre").value = inv ? inv.nombre : "";
+    $("#inv-cupos").value = inv ? inv.cupos : 2;
+    $("#inv-telefono").value = inv ? inv.telefono || "" : "";
+    $("#inv-guardar").textContent = inv ? "Guardar cambios" : "Guardar invitado";
+    $("#inv-error").hidden = true;
+    $("#listo-invitado").hidden = true;
+    $("#abrir-agregar").hidden = true;
+    $("#form-invitado").hidden = false;
+    $("#form-invitado").scrollIntoView({ block: "start" });
+    $("#inv-nombre").focus({ preventScroll: true });
+  }
+
+  function cerrarFormulario() {
+    $("#form-invitado").hidden = true;
+    $("#abrir-agregar").hidden = false;
+  }
+
+  function cambiarCupos(paso) {
+    const campo = $("#inv-cupos");
+    campo.value = Math.min(30, Math.max(1, (parseInt(campo.value, 10) || 1) + paso));
+  }
+
+  function errorFormulario(texto, campo) {
+    $("#inv-error").textContent = texto;
+    $("#inv-error").hidden = false;
+    if (campo) campo.focus();
+  }
+
+  function enviarFormularioInvitado(e) {
+    e.preventDefault();
+    const nombre = $("#inv-nombre").value.trim();
+    const cupos = parseInt($("#inv-cupos").value, 10);
+    const codigo = $("#inv-codigo").value;
+    if (!nombre) return errorFormulario("Escribe el nombre de la invitación.", $("#inv-nombre"));
+    if (!cupos || cupos < 1 || cupos > 30) return errorFormulario("Elige cuántas personas pueden ir (entre 1 y 30).", $("#inv-cupos"));
+    const repetido = listaInvitados().some(function (x) { return x.codigo !== codigo && x.nombre.trim().toLowerCase() === nombre.toLowerCase(); });
+    if (repetido) return errorFormulario("Ya tienes una invitación con ese nombre. Búscala en la lista para editarla.", $("#inv-nombre"));
+
+    const boton = $("#inv-guardar");
+    const textoBoton = boton.textContent;
+    boton.disabled = true;
+    boton.textContent = "Guardando…";
+    guardarInvitados([{ codigo: codigo, nombre: nombre, cupos: cupos, telefono: $("#inv-telefono").value.trim() }])
+      .then(function (guardados) {
+        cerrarFormulario();
+        pintarTodo();
+        if (codigo) U.aviso("Cambios guardados"); else mostrarListo(guardados[0]);
+      })
+      .catch(function (err) { errorFormulario("No se pudo guardar (" + err.message + "). Inténtalo de nuevo."); })
+      .then(function () {
+        boton.disabled = false;
+        boton.textContent = textoBoton;
+      });
+  }
+
+  function mostrarListo(i) {
+    const el = $("#listo-invitado");
+    el.innerHTML = '<span class="listo-icono">' + icono("check") + "</span>" +
+      "<h3>¡Listo! " + esc(i.nombre) + " ya está en la lista</h3>" +
+      "<p>Pueden ir <strong>" + esc(U.textoCupos(i.cupos)) + "</strong>. Ahora envíale su invitación:</p>" +
+      '<a class="boton boton-grande" data-enviar="' + esc(i.codigo) + '" href="' + esc(enlaceEnviar(i, false)) + '" target="_blank" rel="noopener">' +
+      icono("chat") + "<span>Enviar invitación por WhatsApp</span></a>" +
+      '<div class="admin-fila">' +
+      '<button type="button" class="boton boton-claro boton-mini" data-copiar="' + esc(U.enlaceInvitado(i.codigo)) + '">' + icono("copiar") + "<span>Copiar enlace</span></button>" +
+      '<button type="button" class="boton boton-claro boton-mini" data-accion="agregar">' + icono("agregar") + "<span>Agregar otro invitado</span></button>" +
+      "</div>";
+    el.hidden = false;
+    el.scrollIntoView({ block: "start" });
+  }
+
+  // Pegar una lista completa (por ejemplo, copiada de Excel)
+  function agregarVarios() {
+    const lineas = $("#varios-entrada").value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    const existentes = {};
+    listaInvitados().forEach(function (i) { existentes[i.nombre.trim().toLowerCase()] = i; });
+    const vistos = {};
+    const nuevos = [];
     lineas.forEach(function (linea) {
       const sep = linea.indexOf("\t") >= 0 ? "\t" : linea.indexOf(";") >= 0 ? ";" : ",";
       const partes = linea.split(sep).map(function (p) { return p.trim(); });
       const nombre = partes[0];
-      if (!nombre) return;
+      if (!nombre || vistos[nombre.toLowerCase()]) return;
       const cupos = parseInt(partes[1], 10);
       if (isNaN(cupos) && /nombre|invitado/i.test(nombre)) return; // encabezado de Excel
-      let codigo = existentes[nombre.toLowerCase()];
-      if (!codigo || usados[codigo]) {
-        do { codigo = (U.slug(nombre) || "invitado") + "-" + U.codigoAleatorio(4); } while (usados[codigo]);
-      }
-      usados[codigo] = true;
-      resultado.push({ codigo: codigo, nombre: nombre, cupos: isNaN(cupos) || cupos < 1 ? 1 : cupos, telefono: (partes[2] || "").replace(/\D/g, "") });
+      const previo = existentes[nombre.toLowerCase()];
+      if (previo && !editable(previo)) return;
+      vistos[nombre.toLowerCase()] = true;
+      nuevos.push({
+        codigo: previo ? previo.codigo : "",
+        nombre: nombre,
+        cupos: isNaN(cupos) || cupos < 1 ? 1 : Math.min(30, cupos),
+        telefono: partes[2] || (previo ? previo.telefono || "" : ""),
+      });
     });
-
-    if (!resultado.length) {
+    if (!nuevos.length) {
       U.aviso("Escribe al menos un invitado");
-      $("#gen-entrada").focus();
+      $("#varios-entrada").focus();
       return;
     }
-    const total = resultado.reduce(function (s, i) { return s + i.cupos; }, 0);
-    $("#gen-salida").value = "/*\n * LISTA DE INVITADOS (creada desde admin.html)\n * " + resultado.length + " invitaciones · " + total + " cupos.\n" +
-      " * Enlace personal de cada invitado: tu-pagina/?i=CODIGO\n */\nwindow.INVITADOS = [\n" +
-      resultado.map(function (i) {
-        return "  { codigo: " + JSON.stringify(i.codigo) + ", nombre: " + JSON.stringify(i.nombre) + ", cupos: " + i.cupos +
-          ", telefono: " + JSON.stringify(i.telefono) + " },";
-      }).join("\n") + "\n];\n";
-    $("#gen-resumen").innerHTML = "Listo: <strong>" + plural(resultado.length, "invitación", "invitaciones") + "</strong> con " + plural(total, "cupo", "cupos") + " en total.";
-    $("#gen-nombres").innerHTML = resultado.map(function (i) {
-      return "<li>" + esc(i.nombre) + " <small>" + esc(U.textoCupos(i.cupos)) + "</small></li>";
-    }).join("");
-    $("#gen-resultado").hidden = false;
+    const boton = $("#varios-agregar");
+    boton.disabled = true;
+    boton.textContent = "Agregando…";
+    guardarInvitados(nuevos)
+      .then(function (g) {
+        const total = g.reduce(function (s, i) { return s + i.cupos; }, 0);
+        $("#varios-resultado").innerHTML = "Listo: se guardaron <strong>" + plural(g.length, "invitación", "invitaciones") + "</strong> (" + plural(total, "cupo", "cupos") + "). " +
+          '<button type="button" class="enlace-boton" data-ir="invitados" data-filtro-ir="todos">Ir a Invitados para enviarlas</button>';
+        $("#varios-resultado").hidden = false;
+        $("#varios-entrada").value = "";
+        pintarTodo();
+      })
+      .catch(function (err) { U.aviso("No se pudo guardar: " + err.message); })
+      .then(function () {
+        boton.disabled = false;
+        boton.textContent = "Agregar a la lista";
+      });
   }
 
   // =================================================================
@@ -601,7 +763,37 @@
         return;
       }
       const ir = e.target.closest("[data-ir]");
-      if (ir) { irA(ir.dataset.ir, ir.dataset.filtroIr); return; }
+      if (ir) {
+        irA(ir.dataset.ir, ir.dataset.filtroIr);
+        if (ir.dataset.accion === "agregar") setTimeout(function () { abrirFormulario(null); }, 60);
+        return;
+      }
+      const accion = e.target.closest("[data-accion]");
+      if (accion && accion.dataset.accion === "agregar") { abrirFormulario(null); return; }
+      const editar = e.target.closest("[data-editar]");
+      if (editar) {
+        const inv = listaInvitados().find(function (x) { return x.codigo === editar.dataset.editar; });
+        if (inv) abrirFormulario(inv);
+        return;
+      }
+      const eliminar = e.target.closest("[data-eliminar]");
+      if (eliminar) {
+        if (!eliminar.classList.contains("peligro")) {
+          eliminar.classList.add("peligro");
+          $("span", eliminar).textContent = "Toca otra vez para eliminar";
+          setTimeout(function () {
+            eliminar.classList.remove("peligro");
+            $("span", eliminar).textContent = "Eliminar";
+          }, 4000);
+          return;
+        }
+        borrarInvitado(eliminar.dataset.eliminar)
+          .then(function () { pintarTodo(); U.aviso("Invitado eliminado"); })
+          .catch(function (err) { U.aviso("No se pudo eliminar: " + err.message); });
+        return;
+      }
+      const paso = e.target.closest("[data-paso]");
+      if (paso) { cambiarCupos(Number(paso.dataset.paso)); return; }
       const irFiltro = e.target.closest("[data-ir-filtro]");
       if (irFiltro) { irA("invitados", irFiltro.dataset.irFiltro); return; }
       const f = e.target.closest("[data-filtro]");
@@ -626,13 +818,11 @@
     $("#admin-recargar").addEventListener("click", recargar);
     $("#exportar-respuestas").addEventListener("click", exportarRespuestas);
     $("#exportar-asistentes").addEventListener("click", exportarAsistentes);
-    $("#gen-crear").addEventListener("click", generar);
-    $("#gen-copiar").addEventListener("click", function () {
-      U.copiarTexto($("#gen-salida").value).then(function (ok) { U.aviso(ok ? "¡Copiado!" : "No se pudo copiar"); });
-    });
-    $("#gen-descargar").addEventListener("click", function () {
-      U.descargarArchivo("invitados.js", $("#gen-salida").value, "text/javascript;charset=utf-8");
-    });
+    $("#abrir-agregar").addEventListener("click", function () { abrirFormulario(null); });
+    $("#inv-cancelar").addEventListener("click", cerrarFormulario);
+    $("#form-invitado").addEventListener("submit", enviarFormularioInvitado);
+    $("#form-invitado").addEventListener("input", function () { $("#inv-error").hidden = true; });
+    $("#varios-agregar").addEventListener("click", agregarVarios);
     pintarQR();
     pintarConexion();
 
@@ -642,8 +832,7 @@
         $("#bloqueo-error").hidden = true;
         cargarGoogle($("#admin-clave").value);
       });
-      let guardada = "";
-      try { guardada = window.sessionStorage.getItem(CLAVE_SESION) || ""; } catch (e) { guardada = ""; }
+      const guardada = claveGuardada();
       pintarTodo();
       if (guardada) cargarGoogle(guardada); else cerrarPanel();
     } else {

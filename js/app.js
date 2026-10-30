@@ -13,9 +13,10 @@
   const $$ = function (sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); };
 
   const reducirMovimiento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const invitado = U.buscarInvitado(U.codigoDeLaUrl());
+  let invitado = null; // se busca al cargar (ver resolverInvitado al final)
   const fecha = U.fechaBoda();
-  const CLAVE_SOBRE = "boda-sobre-abierto";
+  // El sobre se muestra una vez por visita y por invitado
+  const claveSobre = function () { return "boda-sobre-abierto-" + (invitado ? invitado.codigo : "general"); };
 
   function divisor() {
     return '<img class="divisor" src="assets/img/divisor.svg" alt="" aria-hidden="true">';
@@ -73,7 +74,7 @@
     }
 
     let yaAbierto = false;
-    try { yaAbierto = window.sessionStorage.getItem(CLAVE_SOBRE) === "1"; } catch (e) { yaAbierto = false; }
+    try { yaAbierto = window.sessionStorage.getItem(claveSobre()) === "1"; } catch (e) { yaAbierto = false; }
 
     if (opciones.mostrar === false || yaAbierto) {
       pantalla.hidden = true;
@@ -95,7 +96,7 @@
     iniciarMusica();
     pantalla.classList.add("abriendo");
     $("#sobre-grafico").classList.add("abierto");
-    try { window.sessionStorage.setItem(CLAVE_SOBRE, "1"); } catch (e) { /* sin almacenamiento */ }
+    try { window.sessionStorage.setItem(claveSobre(), "1"); } catch (e) { /* sin almacenamiento */ }
 
     const espera = reducirMovimiento ? 150 : 1700;
     setTimeout(function () {
@@ -499,9 +500,36 @@
     if (limite && Date.now() > limite.getTime()) return pintarPlazoVencido(limite);
     if (!invitado && R.permitirSinEnlace === false) return pintarSinEnlace();
 
+    listaSelect = U.todosLosInvitados().slice();
     const previa = U.leer(claveRespuesta(invitado && invitado.codigo), null);
-    if (previa) return pintarGracias(previa, previa._modo || "demo");
+    if (previa) {
+      if (!invitado && !buscarEnLista(previa)) listaSelect.push({ codigo: previa.codigo, nombre: previa.invitado, cupos: previa.cupos });
+      return pintarGracias(previa, previa._modo || "demo");
+    }
+    if (!invitado && R.urlGoogleScript) {
+      // Sin enlace personal: la lista de nombres viene de Google Sheets
+      contenedorRsvp().innerHTML = '<p class="cargando-rsvp">Cargando la lista de invitados…</p>';
+      consultarScript("accion=lista")
+        .then(function (res) {
+          ((res && res.ok && res.invitados) || []).forEach(function (x) {
+            if (!buscarEnLista({ invitado: x.nombre })) listaSelect.push({ codigo: "", nombre: String(x.nombre), cupos: x.cupos });
+          });
+        })
+        .catch(function (err) { console.warn("No se pudo cargar la lista de invitados", err); })
+        .then(function () { pintarFormulario(null); });
+      return;
+    }
     pintarFormulario(null);
+  }
+
+  // Busca una respuesta o invitado en la lista del formulario (por código o nombre)
+  function buscarEnLista(d) {
+    const nombre = String(d.invitado || d.nombre || "").trim().toLowerCase();
+    for (let i = 0; i < listaSelect.length; i++) {
+      const x = listaSelect[i];
+      if ((d.codigo && x.codigo === d.codigo) || (!d.codigo && x.nombre.trim().toLowerCase() === nombre)) return i + 1;
+    }
+    return 0;
   }
 
   function botonWhatsApp(texto, etiqueta) {
@@ -523,12 +551,11 @@
       '<div class="botones">' + botonWhatsApp("¡Hola! No encuentro mi enlace para confirmar la asistencia a la boda.") + "</div></div>";
   }
 
-  function invitadosOrdenados() {
-    return U.INVITADOS.slice().sort(function (a, b) { return a.nombre.localeCompare(b.nombre, "es"); });
-  }
+  let listaSelect = [];
 
   function pintarFormulario(previa) {
-    const hayLista = U.INVITADOS.length > 0;
+    listaSelect.sort(function (a, b) { return a.nombre.localeCompare(b.nombre, "es"); });
+    const hayLista = listaSelect.length > 0;
     let campoInvitado;
     if (invitado) {
       campoInvitado = '<div class="campo"><span class="etiqueta">Invitación para</span><p class="campo-fijo">' + icono("sobre") +
@@ -536,7 +563,7 @@
     } else if (hayLista) {
       campoInvitado = '<div class="campo"><label for="rsvp-invitado">Tu nombre en la lista de invitados</label>' +
         '<select id="rsvp-invitado" required><option value="">Selecciona tu nombre…</option>' +
-        invitadosOrdenados().map(function (i) { return '<option value="' + esc(i.codigo) + '">' + esc(i.nombre) + "</option>"; }).join("") +
+        listaSelect.map(function (i, n) { return '<option value="' + n + '">' + esc(i.nombre) + "</option>"; }).join("") +
         "</select></div>";
     } else {
       campoInvitado = '<div class="campo"><label for="rsvp-invitado-texto">Tu nombre o el de tu familia</label>' +
@@ -592,14 +619,14 @@
   function invitadoElegido() {
     if (invitado) return invitado;
     const sel = $("#rsvp-invitado");
-    if (sel) return U.buscarInvitado(sel.value);
+    if (sel) return sel.value === "" ? null : listaSelect[Number(sel.value)] || null;
     const texto = $("#rsvp-invitado-texto");
     return texto && texto.value.trim() ? { codigo: "", nombre: texto.value.trim(), cupos: 10 } : null;
   }
 
   function cuposMaximos() {
     const i = invitadoElegido();
-    return Math.max(1, Number(i && i.cupos) || (U.INVITADOS.length ? 1 : 10));
+    return Math.max(1, Number(i && i.cupos) || (listaSelect.length ? 1 : 10));
   }
 
   function actualizarCupos() {
@@ -679,7 +706,8 @@
 
   function rellenarFormulario(d) {
     const sel = $("#rsvp-invitado");
-    if (sel && d.codigo) { sel.value = d.codigo; actualizarCupos(); }
+    const posicion = sel ? buscarEnLista(d) : 0;
+    if (posicion) { sel.value = String(posicion - 1); actualizarCupos(); }
     const texto = $("#rsvp-invitado-texto");
     if (texto) texto.value = d.invitado || "";
     $("#rsvp-responde").value = d.respondidoPor || "";
@@ -894,5 +922,34 @@
     prepararSobre();
   }
 
-  iniciar();
+  // Consulta al Google Apps Script (con límite de espera)
+  function consultarScript(parametros) {
+    const base = (B.rsvp || {}).urlGoogleScript;
+    const url = base + (base.indexOf("?") >= 0 ? "&" : "?") + parametros;
+    const control = window.AbortController ? new AbortController() : null;
+    const espera = control ? setTimeout(function () { control.abort(); }, 8000) : null;
+    return fetch(url, control ? { signal: control.signal } : {})
+      .then(function (r) { return r.json(); })
+      .finally(function () { clearTimeout(espera); });
+  }
+
+  // El invitado del enlace personal puede estar en js/invitados.js, en este
+  // navegador (modo de prueba) o en la pestaña "Invitados" de Google Sheets.
+  function resolverInvitado() {
+    const codigo = U.codigoDeLaUrl();
+    const local = U.buscarInvitado(codigo);
+    if (!codigo || local || !(B.rsvp || {}).urlGoogleScript) return Promise.resolve(local);
+    $("#sobre-invitado").textContent = "Cargando tu invitación…";
+    return consultarScript("accion=invitado&codigo=" + encodeURIComponent(codigo))
+      .then(function (res) { return res && res.ok && res.invitado ? res.invitado : null; })
+      .catch(function (err) {
+        console.warn("No se pudo buscar el invitado", err);
+        return null;
+      });
+  }
+
+  resolverInvitado().then(function (i) {
+    invitado = i;
+    iniciar();
+  });
 })();

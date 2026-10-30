@@ -4,7 +4,9 @@ Invitación de boda web hecha con **HTML, CSS y JavaScript**, sin programas ni i
 
 Incluye todo lo que aparece en el video de referencia (sobre que se abre, música, cuenta regresiva, ubicación, programa, fotos, QR, código de vestimenta y confirmación de asistencia con cupos y restricciones alimentarias) y además varias funciones extra, como un panel para los novios.
 
-> Todo funciona desde el primer momento con datos de ejemplo ("Valentina & Santiago"). Para hacerla tuya solo tienes que editar **dos archivos**: `js/config.js` y `js/invitados.js`.
+> Todo funciona desde el primer momento con datos de ejemplo ("Valentina & Santiago"). Para hacerla tuya:
+> 1. Edita **un archivo**, `js/config.js`, con sus datos: nombres, fecha, lugares y textos.
+> 2. Agrega a tus invitados desde el **panel de los novios**: el nombre de cada familia y cuántas personas pueden ir. No tienes que tocar ningún archivo para eso.
 
 ---
 
@@ -99,8 +101,16 @@ Abre `https://tu-pagina/admin.html`. Funciona como una aplicación: en el celula
 - **Para el catering**: cuántos vegetarianos, veganos, celíacos o alérgicos hay, y quiénes son.
 - **Últimas respuestas**: quién confirmó y cuándo ("Ana Torres confirmó 2 personas · ayer").
 
-### 👥 Invitados: enviar las invitaciones y ver las respuestas
+### 👥 Invitados: agregar familias, elegir cupos y enviar la invitación
 
+**Agregar un invitado (paso a paso):**
+1. Toca el botón verde **"+ Agregar invitado"**.
+2. Escribe el **nombre de la invitación**. Puede ser una persona, una pareja o una familia: "Familia Pérez", "Ana y Luis"… Así aparecerá en el sobre.
+3. Elige **cuántas personas pueden ir** con los botones **−** y **+**. En el formulario de confirmación no podrán registrar más personas que ese número.
+4. Si quieres, escribe su **WhatsApp**, por ejemplo `300 123 4567`. El código de país se agrega solo y el mensaje se abre directo en su chat.
+5. Toca **Guardar invitado**. Aparece **"¡Listo!"** con el botón **"Enviar invitación por WhatsApp"**, que abre WhatsApp con el mensaje y su enlace personal listos para enviar.
+
+**En la lista de invitados:**
 - **Filtros con contador**: Todos · Sin responder · Asistirán · No asistirán. También hay un **buscador** por nombre.
 - Cada invitado muestra su estado con color.
 - El botón **Enviar** abre WhatsApp con el mensaje listo: el nombre del invitado, sus cupos y su enlace personal. Si el invitado tiene teléfono en la lista, se abre directo su chat.
@@ -109,7 +119,7 @@ Abre `https://tu-pagina/admin.html`. Funciona como una aplicación: en el celula
   - quién respondió y cuándo;
   - las personas que asistirán, con sus restricciones;
   - su mensaje y su canción.
-  - También están los botones **Enviar recordatorio** (solo si no ha respondido), **Copiar enlace** y **Ver su invitación**.
+  - También están los botones **Enviar recordatorio** (solo si no ha respondido), **Copiar enlace**, **Ver su invitación**, **Editar** (para cambiar el nombre, los cupos o el teléfono) y **Eliminar**. Eliminar pide tocar dos veces.
 - El menú muestra en rojo cuántos invitados están **sin responder**.
 
 ### 💬 Mensajes
@@ -123,10 +133,7 @@ Abre `https://tu-pagina/admin.html`. Funciona como una aplicación: en el celula
   - *Respuestas por invitación*;
   - *Lista de asistentes*, una fila por persona con sus restricciones, para las mesas y el menú.
 - **Códigos QR para imprimir**: uno para subir fotos y otro para la invitación general.
-- **Agregar o cambiar invitados**, en 3 pasos:
-  1. Pegas tu lista desde Excel (nombre, cupos, teléfono).
-  2. Tocas *Crear lista*.
-  3. Descargas el archivo `invitados.js`. Los invitados que ya estaban conservan su enlace.
+- **Agregar varios invitados a la vez**: copia de Excel las columnas *nombre* y *cupos* (y el teléfono, si quieres), pégalas y toca *Agregar a la lista*. Si un nombre ya existía, se actualizan sus cupos y conserva su enlace.
 - **Conexión**: indica si el panel está conectado a Google Sheets o en modo de prueba.
   - Conectado: puedes cerrar la sesión en ese dispositivo.
   - Modo de prueba: puedes borrar las respuestas de prueba. Pide tocar dos veces para no borrarlas por error.
@@ -149,7 +156,7 @@ Boda/
 │   └── admin.css               ← diseño del panel
 ├── js/
 │   ├── config.js               ← ✏️ TUS DATOS (nombres, fecha, lugares, textos…)
-│   ├── invitados.js            ← ✏️ TU LISTA DE INVITADOS
+│   ├── invitados.js            ← lista de invitados escrita a mano (opcional)
 │   ├── app.js                  ← funcionamiento de la invitación
 │   ├── admin.js                ← funcionamiento del panel
 │   ├── utilidades.js           ← funciones compartidas
@@ -176,6 +183,7 @@ Boda/
 | `fecha` | `"2027-09-18T16:00:00-05:00"` | Año-mes-día, hora y diferencia horaria. Colombia, Perú, Ecuador y Panamá: `-05:00`; México (centro): `-06:00`. |
 | `fechaFin` | `"2027-09-19T02:00:00-05:00"` | Hora de fin, para el calendario. |
 | `zonaHoraria` | `"America/Bogota"` | Para mostrar la fecha correcta a todos. Otros ejemplos: `America/Lima`, `America/Mexico_City`. |
+| `codigoPais` | `"57"` | Se agrega a los teléfonos de WhatsApp que escribas sin él. Colombia `57`, México `52`, Perú `51`, Ecuador `593`. |
 | `eventos` | ceremonia, recepción | Lugar, dirección, hora. En `mapa` puedes pegar el enlace exacto de Google Maps. |
 | `programa` | lista de horas y actividades | Íconos disponibles: `anillos`, `iglesia`, `copas`, `cena`, `baile`, `pastel`, `luna`, `camara`, `ramo`. |
 | `vestimenta` | `"Traje formal oscuro"`, colores | Los colores van en formato `#rrggbb`. |
@@ -238,27 +246,26 @@ Cuando publiques la página, cambia `og:image` por la dirección completa, por e
 
 ## Lista de invitados y enlaces personales
 
-Cada línea de `js/invitados.js` es una **invitación**. Puede ser una persona, una pareja o una familia:
+Cada **invitación** puede ser una persona, una pareja o una familia, y tiene un número de **cupos**: cuántas personas pueden asistir con ella.
 
-```js
-{ codigo: "familia-perez-k7m2", nombre: "Familia Pérez", cupos: 4, telefono: "" },
-```
+**Cómo agregar a tus invitados y enviarles la invitación:**
 
-- `codigo`: identificador del enlace, sin espacios ni tildes. La terminación aleatoria (`-k7m2`) evita que alguien adivine el enlace de otro invitado.
-- `nombre`: cómo aparece en el sobre.
-- `cupos`: máximo de personas que pueden confirmar.
-- `telefono`: opcional, para enviar la invitación por WhatsApp desde el panel.
+1. Abre el panel `admin.html` y entra a **Invitados**.
+2. Toca **"+ Agregar invitado"**, escribe el nombre (por ejemplo "Familia Pérez") y elige con **− / +** cuántas personas pueden ir.
+3. Toca **Guardar invitado** y luego **"Enviar invitación por WhatsApp"**.
 
-El enlace de ese invitado es `https://tu-pagina/?i=familia-perez-k7m2`.
+Si ya tienes la lista en Excel, en **Herramientas → Agregar varios invitados a la vez** puedes pegarla completa.
 
-**La forma más fácil de crear la lista:**
+Cada invitado recibe un **enlace personal**, por ejemplo `https://tu-pagina/?i=familia-perez-k7m2`. Al abrirlo:
+- el sobre muestra su nombre y para cuántas personas es la invitación;
+- el formulario no le deja confirmar más personas de las permitidas.
 
-1. Abre `admin.html` y baja hasta el **Generador de la lista de invitados**.
-2. Pega tu lista desde Excel (columnas: nombre, cupos, teléfono) o escríbela así: `Familia Pérez, 4`.
-3. Toca **Generar archivo** y luego **Descargar invitados.js**.
-4. Reemplaza el archivo `js/invitados.js` del proyecto por el descargado.
+La terminación aleatoria (`-k7m2`) evita que alguien adivine el enlace de otro invitado.
 
-**Para enviar las invitaciones:** en `admin.html`, entra a **Invitados** y toca **Enviar** al lado de cada nombre. Se abre WhatsApp con el mensaje listo y su enlace personal.
+**¿Dónde se guarda la lista?**
+- **Con Google Sheets conectado** (lo normal): en la pestaña **Invitados** de tu hoja de cálculo. Así los enlaces funcionan en el celular de cualquier invitado. También puedes escribir o corregir invitados directamente en la hoja; el panel les crea su enlace la próxima vez que lo abras.
+- **En modo de prueba**: solo en el navegador donde los agregaste. Sirve para probar abriendo los enlaces desde ese mismo dispositivo, pero tus invitados no los verían.
+- **Opcional:** si prefieres escribir la lista a mano, puedes ponerla en `js/invitados.js` (el archivo explica el formato). Esos invitados se suman a los del panel.
 
 ---
 
@@ -284,9 +291,12 @@ Sin este paso la página funciona en *modo demostración*: las respuestas solo s
    ```
 10. Para probar, abre la URL en el navegador. Debe decir *"El script de la invitación está funcionando."*
 
-Las respuestas llegan a dos pestañas que se crean solas:
+En la hoja se crean solas tres pestañas:
+- **Invitados**: tu lista de invitaciones con sus cupos. Se llena desde el panel, pero también puedes escribir en ella directamente. No cambies la columna "Código", porque es la del enlace personal.
 - **Respuestas**: una fila por invitación (quién respondió, si asiste, cuántos adultos y niños, teléfono, canción y mensaje).
 - **Asistentes**: una fila por persona, con sus restricciones alimentarias.
+
+El script también revisa los cupos: aunque alguien modifique la página, no puede confirmar más personas de las que tiene su invitación.
 
 > Si después cambias el código del script, ve a **Implementar → Administrar implementaciones → ✏️ Editar → Versión: Nueva versión → Implementar**. Si no, Google sigue usando la versión anterior. La URL no cambia.
 
@@ -311,18 +321,21 @@ Las respuestas llegan a dos pestañas que se crean solas:
 - **Lo más fácil:** abre `index.html` con doble clic.
 - **Lo más fiel a la versión publicada:** en la carpeta del proyecto ejecuta `python3 -m http.server 8000` y abre `http://localhost:8000`.
 
-Enlaces para probar:
-- `http://localhost:8000/?i=familia-perez-k7m2`: invitación personal (4 cupos).
-- `http://localhost:8000/admin.html`: el panel. En modo demostración muestra las respuestas que llenaste en ese mismo navegador.
+Para probar el recorrido completo:
+1. Abre `http://localhost:8000/admin.html` y agrega un invitado en **Invitados → Agregar invitado**.
+2. Toca su nombre y luego **Ver su invitación**. Verás el sobre con su nombre y sus cupos.
+3. Llena el formulario y vuelve al panel. En modo de prueba verás la respuesta porque usaste el mismo navegador.
 
-El sobre se muestra una vez por visita. Para volver a verlo, abre la página en una pestaña nueva o en modo incógnito.
+El sobre se muestra una vez por visita y por invitado. Para volver a verlo, abre la página en una pestaña nueva o en modo incógnito.
 
 ---
 
 ## Privacidad: qué es público y qué no
 
-- **Público:** todo lo que está en los archivos de la página (`config.js`, `invitados.js`, fotos). Cualquier persona con conocimientos técnicos podría ver la lista de nombres y sus códigos. **Si pones teléfonos en `invitados.js`, también serían visibles.** Si no quieres eso, deja `telefono: ""`; al tocar WhatsApp en el panel podrás elegir el contacto a mano.
-- **Privado:** las respuestas de los invitados. Se guardan en **tu** Google Sheets y el panel solo las muestra con la clave. Usa una clave que no sea fácil de adivinar. El script no muestra nada mientras tenga la clave de ejemplo.
+- **Público:** lo que está en los archivos de la página (`config.js`, fotos y, si lo usas, `invitados.js`).
+- **Lo que ve cada invitado:** con su enlace personal solo se consulta el nombre y los cupos de **esa** invitación.
+- **Quien entra sin enlace:** ve la lista de nombres para elegir el suyo, pero no los enlaces de los demás. Si no quieres mostrar esa lista, pon `permitirSinEnlace: false` en `js/config.js`.
+- **Privado:** los teléfonos de tus invitados, la lista completa con sus enlaces y todas las respuestas. Se guardan en **tu** Google Sheets y el panel solo los muestra con la clave. Usa una clave que no sea fácil de adivinar. El script no muestra nada mientras tenga la clave de ejemplo.
 - `admin.html` está marcado para que los buscadores no lo muestren.
 
 ---

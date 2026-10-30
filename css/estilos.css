@@ -694,6 +694,7 @@ body:not(.abierta) .portada > :not(.rama) { opacity: 0; transform: translateY(18
 .error-form { margin: 0 0 1rem; padding: 0.8rem 1rem; border-radius: 12px; background: #f7e7e9; color: var(--vino); font-family: var(--fuente-sans); font-size: 0.88rem; }
 .nota-demo { margin-top: 1rem; padding: 0.75rem 1rem; border-radius: 12px; background: var(--papel); font-family: var(--fuente-sans); font-size: 0.76rem; line-height: 1.5; color: var(--tinta-suave); text-align: left; }
 
+.cargando-rsvp { padding: 1.5rem 0; text-align: center; font-family: var(--fuente-sans); font-size: 0.9rem; color: var(--tinta-suave); }
 .gracias, .aviso-rsvp { text-align: center; }
 .gracias-icono { display: inline-grid; place-items: center; width: 68px; height: 68px; margin-bottom: 0.6rem; border-radius: 50%; background: var(--papel); color: var(--vino); }
 .gracias-icono .icono { width: 32px; height: 32px; }

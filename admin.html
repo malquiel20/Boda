@@ -77,8 +77,42 @@
     <section class="pestana" id="p-invitados" aria-labelledby="t-invitados" hidden>
       <div class="tab-cabeza">
         <h2 id="t-invitados">Invitados</h2>
-        <p>Toca un nombre para ver su respuesta. Con el botón <strong>Enviar</strong> le mandas su invitación por WhatsApp.</p>
+        <p>Agrega a cada familia o persona, elige cuántos pueden ir y envíale su invitación por WhatsApp.</p>
       </div>
+
+      <button type="button" class="boton boton-grande boton-agregar" id="abrir-agregar" data-icono="agregar"><span>Agregar invitado</span></button>
+
+      <form class="tarjeta-panel form-invitado" id="form-invitado" novalidate hidden>
+        <h3 class="tarjeta-titulo" id="form-invitado-titulo">Nuevo invitado</h3>
+        <input type="hidden" id="inv-codigo">
+        <div class="campo-panel">
+          <label for="inv-nombre">Nombre de la invitación</label>
+          <input id="inv-nombre" placeholder="Ej: Familia Pérez, Ana y Luis…" autocomplete="off">
+          <p class="ayuda-panel">Puede ser una persona, una pareja o toda una familia. Así aparecerá en el sobre.</p>
+        </div>
+        <div class="campo-panel">
+          <span class="etiqueta-panel" id="inv-cupos-etiqueta">¿Cuántas personas pueden ir?</span>
+          <div class="contador-cupos" role="group" aria-labelledby="inv-cupos-etiqueta">
+            <button type="button" class="paso" data-paso="-1" aria-label="Una persona menos">−</button>
+            <input id="inv-cupos" type="number" inputmode="numeric" min="1" max="30" value="2" aria-label="Número de personas">
+            <button type="button" class="paso" data-paso="1" aria-label="Una persona más">+</button>
+          </div>
+          <p class="ayuda-panel">En el formulario no podrán confirmar más personas que este número.</p>
+        </div>
+        <div class="campo-panel">
+          <label for="inv-telefono">WhatsApp <span class="opcional">(opcional)</span></label>
+          <input id="inv-telefono" type="tel" inputmode="tel" placeholder="Ej: 300 123 4567" autocomplete="off">
+          <p class="ayuda-panel">Si lo escribes, el mensaje se abre directo en su chat. Si no, eliges el contacto en WhatsApp.</p>
+        </div>
+        <p class="bloqueo-error" id="inv-error" role="alert" hidden></p>
+        <div class="admin-fila">
+          <button type="submit" class="boton" id="inv-guardar">Guardar invitado</button>
+          <button type="button" class="boton boton-claro" id="inv-cancelar">Cancelar</button>
+        </div>
+      </form>
+
+      <div class="tarjeta-panel listo-invitado" id="listo-invitado" role="status" hidden></div>
+
       <input type="search" class="buscador" id="buscar" placeholder="Buscar por nombre…" aria-label="Buscar invitado">
       <div class="filtros" id="filtros" role="group" aria-label="Mostrar invitados"></div>
       <div class="lista-invitados" id="lista-invitados"></div>
@@ -121,31 +155,15 @@
           <div class="qr-grid" id="qr-grid"></div>
         </article>
 
-        <article class="tarjeta-panel" id="h-generador">
-          <h3 class="tarjeta-titulo" data-icono="agregar">Agregar o cambiar invitados</h3>
-          <ol class="pasos">
-            <li>Escribe o pega tu lista desde Excel. Una invitación por línea: <strong>nombre, cupos, teléfono</strong> (el teléfono es opcional).</li>
-            <li>Toca <strong>Crear lista</strong>.</li>
-            <li>Descarga el archivo y reemplaza <code>js/invitados.js</code> en GitHub. Los invitados que ya estaban conservan su enlace.</li>
-          </ol>
-          <label class="visualmente-oculto" for="gen-entrada">Tu lista de invitados</label>
-          <textarea id="gen-entrada" rows="6" placeholder="Familia Pérez, 4, 573001234567&#10;Ana y Luis, 2&#10;Carolina Mejía, 1"></textarea>
+        <article class="tarjeta-panel" id="h-varios">
+          <h3 class="tarjeta-titulo" data-icono="agregar">Agregar varios invitados a la vez</h3>
+          <p class="texto-suave">¿Tienes la lista en Excel? Copia las columnas <strong>nombre</strong> y <strong>cupos</strong> (y el teléfono, si quieres) y pégalas aquí. También puedes escribirla: una invitación por línea.</p>
+          <label class="visualmente-oculto" for="varios-entrada">Lista de invitados</label>
+          <textarea id="varios-entrada" rows="6" placeholder="Familia Pérez, 4&#10;Ana y Luis, 2, 300 123 4567&#10;Carolina Mejía, 1"></textarea>
           <div class="admin-fila">
-            <button type="button" class="boton" id="gen-crear">Crear lista</button>
+            <button type="button" class="boton" id="varios-agregar">Agregar a la lista</button>
           </div>
-          <div id="gen-resultado" hidden>
-            <p class="gen-resumen" id="gen-resumen"></p>
-            <ul class="gen-nombres" id="gen-nombres"></ul>
-            <div class="admin-fila">
-              <button type="button" class="boton descarga" id="gen-descargar">Descargar invitados.js</button>
-              <button type="button" class="boton boton-claro" id="gen-copiar">Copiar contenido</button>
-            </div>
-            <details class="gen-codigo">
-              <summary>Ver el contenido del archivo</summary>
-              <label class="visualmente-oculto" for="gen-salida">Contenido de js/invitados.js</label>
-              <textarea id="gen-salida" rows="9" readonly></textarea>
-            </details>
-          </div>
+          <div class="gen-resumen" id="varios-resultado" role="status" hidden></div>
         </article>
 
         <article class="tarjeta-panel" id="h-conexion"></article>

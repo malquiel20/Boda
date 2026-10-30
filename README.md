@@ -237,10 +237,10 @@ Cuando compartes un enlace, WhatsApp no lee los datos de `config.js`. Por eso ha
 ```html
 <title>Valentina & Santiago · Nuestra boda</title>
 <meta property="og:title" content="Valentina & Santiago · ¡Nos casamos!">
-<meta property="og:image" content="assets/img/compartir.jpg">
+<meta property="og:image" content="https://malquiel20.github.io/Boda/assets/img/compartir.jpg">
 ```
 
-Cuando publiques la página, cambia `og:image` por la dirección completa, por ejemplo `https://tu-usuario.github.io/Boda/assets/img/compartir.jpg`. Algunas aplicaciones solo muestran la imagen con la dirección completa.
+La imagen ya tiene la dirección completa de la página publicada (`og:image` y `og:url`). Si algún día cambias la dirección, actualízala aquí también: algunas aplicaciones solo muestran la imagen con la dirección completa.
 
 ---
 

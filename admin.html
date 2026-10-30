@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panel de invitados · Boda</title>
+  <meta name="theme-color" content="#fbf8f2">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/estilos.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/config.js" defer></script>
+  <script src="js/invitados.js" defer></script>
+  <script src="js/vendor/qrcode.js" defer></script>
+  <script src="js/utilidades.js" defer></script>
+  <script src="js/admin.js" defer></script>
+</head>
+<body class="admin">
+  <header class="panel-cabecera">
+    <div class="panel-ancho panel-cabecera-in">
+      <div>
+        <p class="eyebrow">Panel de los novios</p>
+        <h1 id="admin-titulo">Nuestra boda</h1>
+      </div>
+      <div class="cabecera-acciones">
+        <button type="button" class="boton-icono" id="admin-recargar" aria-label="Actualizar respuestas" title="Actualizar respuestas"></button>
+        <a class="boton boton-claro boton-mini boton-ver" id="ver-invitacion" href="./" target="_blank" rel="noopener" aria-label="Ver invitación" data-icono="ojo"><span>Ver invitación</span></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Menú: abajo en el celular, arriba en el computador -->
+  <nav class="pestanas" id="pestanas" aria-label="Secciones del panel">
+    <div class="panel-ancho pestanas-in">
+      <a href="#inicio" data-pestana="inicio" data-icono="casa"><span>Inicio</span></a>
+      <a href="#invitados" data-pestana="invitados" data-icono="personas"><span>Invitados</span><span class="globo" id="globo-pendientes" hidden></span></a>
+      <a href="#mensajes" data-pestana="mensajes" data-icono="chat"><span>Mensajes</span></a>
+      <a href="#herramientas" data-pestana="herramientas" data-icono="ajustes"><span>Herramientas</span></a>
+    </div>
+  </nav>
+
+  <div class="panel-ancho panel-avisos">
+    <p class="aviso-modo" id="aviso-modo" hidden></p>
+    <p class="admin-estado" id="admin-estado" role="status" aria-live="polite"></p>
+  </div>
+
+  <!-- Pantalla de clave (solo cuando está conectado a Google Sheets) -->
+  <form class="bloqueo" id="admin-conexion" hidden>
+    <span class="bloqueo-icono" id="bloqueo-icono"></span>
+    <h2>Escribe tu clave</h2>
+    <p>Es la clave que pusiste en el script de Google Sheets (<code>CLAVE_ADMIN</code>).</p>
+    <label class="visualmente-oculto" for="admin-clave">Clave</label>
+    <input id="admin-clave" type="password" autocomplete="current-password" required>
+    <button type="submit" class="boton">Ver respuestas</button>
+    <p class="bloqueo-error" id="bloqueo-error" role="alert" hidden></p>
+  </form>
+
+  <main class="panel-ancho panel-main" id="panel-contenido">
+
+    <!-- ============ INICIO ============ -->
+    <section class="pestana" id="p-inicio" aria-labelledby="t-inicio">
+      <h2 class="visualmente-oculto" id="t-inicio">Inicio</h2>
+      <div class="inicio-grid">
+        <div class="columna">
+          <article class="tarjeta-panel tarjeta-cuenta" id="cuenta-boda"></article>
+          <article class="tarjeta-panel" id="progreso"></article>
+          <article class="tarjeta-panel" id="que-sigue"></article>
+        </div>
+        <div class="columna">
+          <article class="tarjeta-panel" id="catering"></article>
+          <article class="tarjeta-panel" id="ultimas"></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ INVITADOS ============ -->
+    <section class="pestana" id="p-invitados" aria-labelledby="t-invitados" hidden>
+      <div class="tab-cabeza">
+        <h2 id="t-invitados">Invitados</h2>
+        <p>Agrega a cada familia o persona, elige cuántos pueden ir y envíale su invitación por WhatsApp.</p>
+      </div>
+
+      <button type="button" class="boton boton-grande boton-agregar" id="abrir-agregar" data-icono="agregar"><span>Agregar invitado</span></button>
+
+      <form class="tarjeta-panel form-invitado" id="form-invitado" novalidate hidden>
+        <h3 class="tarjeta-titulo" id="form-invitado-titulo">Nuevo invitado</h3>
+        <input type="hidden" id="inv-codigo">
+        <div class="campo-panel">
+          <label for="inv-nombre">Nombre de la invitación</label>
+          <input id="inv-nombre" placeholder="Ej: Familia Pérez, Ana y Luis…" autocomplete="off">
+          <p class="ayuda-panel">Puede ser una persona, una pareja o toda una familia. Así aparecerá en el sobre.</p>
+        </div>
+        <div class="campo-panel">
+          <span class="etiqueta-panel" id="inv-cupos-etiqueta">¿Cuántas personas pueden ir?</span>
+          <div class="contador-cupos" role="group" aria-labelledby="inv-cupos-etiqueta">
+            <button type="button" class="paso" data-paso="-1" aria-label="Una persona menos">−</button>
+            <input id="inv-cupos" type="number" inputmode="numeric" min="1" max="30" value="2" aria-label="Número de personas">
+            <button type="button" class="paso" data-paso="1" aria-label="Una persona más">+</button>
+          </div>
+          <p class="ayuda-panel">En el formulario no podrán confirmar más personas que este número.</p>
+        </div>
+        <div class="campo-panel">
+          <label for="inv-telefono">WhatsApp <span class="opcional">(opcional)</span></label>
+          <input id="inv-telefono" type="tel" inputmode="tel" placeholder="Ej: 300 123 4567" autocomplete="off">
+          <p class="ayuda-panel">Si lo escribes, el mensaje se abre directo en su chat. Si no, eliges el contacto en WhatsApp.</p>
+        </div>
+        <p class="bloqueo-error" id="inv-error" role="alert" hidden></p>
+        <div class="admin-fila">
+          <button type="submit" class="boton" id="inv-guardar">Guardar invitado</button>
+          <button type="button" class="boton boton-claro" id="inv-cancelar">Cancelar</button>
+        </div>
+      </form>
+
+      <div class="tarjeta-panel listo-invitado" id="listo-invitado" role="status" hidden></div>
+
+      <input type="search" class="buscador" id="buscar" placeholder="Buscar por nombre…" aria-label="Buscar invitado">
+      <div class="filtros" id="filtros" role="group" aria-label="Mostrar invitados"></div>
+      <div class="lista-invitados" id="lista-invitados"></div>
+    </section>
+
+    <!-- ============ MENSAJES ============ -->
+    <section class="pestana" id="p-mensajes" aria-labelledby="t-mensajes" hidden>
+      <div class="tab-cabeza">
+        <h2 id="t-mensajes">Mensajes y canciones</h2>
+        <p>Lo que les escribieron sus invitados al confirmar.</p>
+      </div>
+      <div class="mensajes-grid">
+        <div class="lista-mensajes" id="mensajes"></div>
+        <article class="tarjeta-panel" id="canciones"></article>
+      </div>
+    </section>
+
+    <!-- ============ HERRAMIENTAS ============ -->
+    <section class="pestana" id="p-herramientas" aria-labelledby="t-herramientas" hidden>
+      <div class="tab-cabeza">
+        <h2 id="t-herramientas">Herramientas</h2>
+      </div>
+      <div class="herramientas-grid">
+        <article class="tarjeta-panel" id="h-excel">
+          <h3 class="tarjeta-titulo" data-icono="tabla">Descargar en Excel</h3>
+          <p class="texto-suave">Para revisar las respuestas con calma o pasarle la lista al catering y a quien organiza las mesas.</p>
+          <div class="opciones-descarga">
+            <button type="button" class="opcion-descarga descarga" id="exportar-respuestas">
+              <strong>Respuestas por invitación</strong><span>Una fila por invitación: estado, personas, mensaje.</span>
+            </button>
+            <button type="button" class="opcion-descarga descarga" id="exportar-asistentes">
+              <strong>Lista de asistentes</strong><span>Una fila por persona, con sus restricciones alimentarias.</span>
+            </button>
+          </div>
+        </article>
+
+        <article class="tarjeta-panel" id="h-qr">
+          <h3 class="tarjeta-titulo" data-icono="qr">Códigos QR para imprimir</h3>
+          <p class="texto-suave">Ponlos en las mesas el día de la boda o en invitaciones impresas.</p>
+          <div class="qr-grid" id="qr-grid"></div>
+        </article>
+
+        <article class="tarjeta-panel" id="h-varios">
+          <h3 class="tarjeta-titulo" data-icono="agregar">Agregar varios invitados a la vez</h3>
+          <p class="texto-suave">¿Tienes la lista en Excel? Copia las columnas <strong>nombre</strong> y <strong>cupos</strong> (y el teléfono, si quieres) y pégalas aquí. También puedes escribirla: una invitación por línea.</p>
+          <label class="visualmente-oculto" for="varios-entrada">Lista de invitados</label>
+          <textarea id="varios-entrada" rows="6" placeholder="Familia Pérez, 4&#10;Ana y Luis, 2, 300 123 4567&#10;Carolina Mejía, 1"></textarea>
+          <div class="admin-fila">
+            <button type="button" class="boton" id="varios-agregar">Agregar a la lista</button>
+          </div>
+          <div class="gen-resumen" id="varios-resultado" role="status" hidden></div>
+        </article>
+
+        <article class="tarjeta-panel" id="h-conexion"></article>
+      </div>
+    </section>
+  </main>
+
+  <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!--
+    Estos textos son los que aparecen cuando compartes el enlace por WhatsApp,
+    Facebook, etc. Cámbialos por los nombres de los novios.
+  -->
+  <title>Valentina & Santiago · Nuestra boda</title>
+  <meta name="description" content="Estás invitado a nuestra boda. Abre tu invitación y confirma tu asistencia.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Valentina & Santiago · ¡Nos casamos!">
+  <meta property="og:description" content="Abre tu invitación y confirma tu asistencia.">
+  <meta property="og:url" content="https://malquiel20.github.io/Boda/">
+  <meta property="og:image" content="https://malquiel20.github.io/Boda/assets/img/compartir.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#fbf8f2">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fuentes/great-vibes-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fuentes/cormorant-garamond-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/estilos.css">
+  <script src="js/config.js" defer></script>
+  <script src="js/invitados.js" defer></script>
+  <script src="js/vendor/qrcode.js" defer></script>
+  <script src="js/utilidades.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body class="bloqueado">
+  <noscript>
+    <p class="sin-js">Para ver la invitación necesitas activar JavaScript en tu navegador.</p>
+  </noscript>
+
+  <!-- ===================== SOBRE DE BIENVENIDA ===================== -->
+  <div id="sobre" class="sobre-pantalla" role="dialog" aria-modal="true" aria-labelledby="sobre-invitado">
+    <img class="rama rama-sobre-1" src="assets/img/rama.svg" alt="" aria-hidden="true">
+    <img class="rama rama-sobre-2" src="assets/img/rama.svg" alt="" aria-hidden="true">
+    <div class="sobre-textos">
+      <p class="eyebrow">Tienes una invitación</p>
+      <h1 id="sobre-invitado" class="sobre-invitado">Querido invitado</h1>
+      <p id="sobre-cupos" class="sobre-cupos" hidden></p>
+    </div>
+    <div class="sobre" id="sobre-grafico">
+      <div class="sobre-fondo"></div>
+      <div class="sobre-carta" aria-hidden="true">
+        <span class="carta-eyebrow">Nos casamos</span>
+        <span class="carta-nombres" id="carta-nombres"></span>
+        <span class="carta-fecha" id="carta-fecha"></span>
+      </div>
+      <svg class="sobre-frente" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="g-lados" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c7944"/><stop offset="1" stop-color="#55613a"/></linearGradient>
+          <linearGradient id="g-base" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7d8b54"/><stop offset="1" stop-color="#6b7844"/></linearGradient>
+        </defs>
+        <polygon points="0,0 50,54 0,100" fill="url(#g-lados)"/>
+        <polygon points="100,0 50,54 100,100" fill="url(#g-lados)"/>
+        <polygon points="0,100 50,50 100,100" fill="url(#g-base)"/>
+      </svg>
+      <svg class="sobre-solapa" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="g-solapa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#808e57"/><stop offset="1" stop-color="#6a7744"/></linearGradient>
+        </defs>
+        <polygon points="0,0 100,0 50,100" fill="url(#g-solapa)"/>
+      </svg>
+      <button type="button" class="sello" id="abrir-sobre" aria-label="Abrir invitación">
+        <span class="sello-iniciales" id="sello-iniciales"></span>
+      </button>
+    </div>
+    <p class="sobre-ayuda" id="sobre-ayuda">Toca el sello para abrir tu invitación</p>
+  </div>
+
+  <main id="invitacion" class="invitacion">
+
+    <!-- ===================== PORTADA ===================== -->
+    <section id="portada" class="portada">
+      <img class="rama rama-portada-1" src="assets/img/rama.svg" alt="" aria-hidden="true">
+      <img class="rama rama-portada-2" src="assets/img/rama.svg" alt="" aria-hidden="true">
+      <p class="eyebrow" id="portada-titulo">¡Nos casamos!</p>
+      <div class="arco"><img id="portada-foto" src="assets/img/pareja.svg" alt="Foto de los novios" width="600" height="800"></div>
+      <h2 class="nombres" id="portada-nombres" tabindex="-1"></h2>
+      <p class="portada-fecha" id="portada-fecha"></p>
+      <p class="portada-ciudad" id="portada-ciudad"></p>
+      <p class="portada-para" id="portada-para" hidden></p>
+      <a class="bajar" href="#cuenta" aria-label="Ver la invitación"></a>
+    </section>
+
+    <!-- ===================== FRASE Y CUENTA REGRESIVA ===================== -->
+    <section id="cuenta" class="seccion seccion-papel">
+      <blockquote class="frase revelar" id="frase"></blockquote>
+      <div class="titulo-seccion revelar">
+        <p class="eyebrow">Solo faltan</p>
+      </div>
+      <div class="contador revelar" id="contador" role="timer" aria-live="off">
+        <div class="contador-caja"><span class="contador-num" data-unidad="dias">0</span><span class="contador-txt">días</span></div>
+        <div class="contador-caja"><span class="contador-num" data-unidad="horas">0</span><span class="contador-txt">horas</span></div>
+        <div class="contador-caja"><span class="contador-num" data-unidad="minutos">0</span><span class="contador-txt">min</span></div>
+        <div class="contador-caja"><span class="contador-num" data-unidad="segundos">0</span><span class="contador-txt">seg</span></div>
+      </div>
+      <p class="contador-mensaje revelar" id="contador-mensaje" hidden></p>
+      <div class="botones revelar">
+        <a class="boton boton-claro" id="cal-google" href="#" target="_blank" rel="noopener"></a>
+        <button type="button" class="boton boton-claro" id="cal-ics"></button>
+      </div>
+    </section>
+
+    <!-- ===================== FAMILIA ===================== -->
+    <section id="familia" class="seccion" hidden></section>
+
+    <!-- ===================== CEREMONIA Y RECEPCIÓN ===================== -->
+    <section id="eventos" class="seccion seccion-papel" hidden></section>
+
+    <!-- ===================== PROGRAMA ===================== -->
+    <section id="programa" class="seccion" hidden></section>
+
+    <!-- ===================== GALERÍA ===================== -->
+    <section id="galeria" class="seccion seccion-papel" hidden></section>
+
+    <!-- ===================== VESTIMENTA ===================== -->
+    <section id="vestimenta" class="seccion" hidden></section>
+
+    <!-- ===================== REGALOS ===================== -->
+    <section id="regalos" class="seccion seccion-papel" hidden></section>
+
+    <!-- ===================== FOTOS (QR) ===================== -->
+    <section id="fotos" class="seccion" hidden></section>
+
+    <!-- ===================== CONFIRMAR ASISTENCIA ===================== -->
+    <section id="confirmar" class="seccion seccion-oliva">
+      <div class="titulo-seccion revelar">
+        <p class="eyebrow">Confirma tu asistencia</p>
+        <h2>¿Nos acompañas?</h2>
+        <img class="divisor" src="assets/img/divisor.svg" alt="" aria-hidden="true">
+        <p class="subtitulo" id="rsvp-limite"></p>
+      </div>
+      <div class="tarjeta tarjeta-rsvp revelar" id="rsvp"></div>
+    </section>
+
+    <!-- ===================== RECOMENDACIONES ===================== -->
+    <section id="recomendaciones" class="seccion seccion-papel" hidden></section>
+
+    <!-- ===================== CIERRE ===================== -->
+    <section id="cierre" class="cierre">
+      <img class="rama rama-cierre" src="assets/img/rama.svg" alt="" aria-hidden="true">
+      <h2 class="cierre-titulo revelar" id="cierre-titulo">¡Te esperamos!</h2>
+      <p class="cierre-texto revelar" id="cierre-texto"></p>
+      <p class="cierre-nombres revelar" id="cierre-nombres"></p>
+      <p class="cierre-fecha revelar" id="cierre-fecha"></p>
+    </section>
+
+    <footer class="pie">
+      <p id="pie-texto"></p>
+    </footer>
+  </main>
+
+  <!-- ===================== BOTONES FLOTANTES ===================== -->
+  <a href="#confirmar" class="flotante-confirmar" id="flotante-confirmar" hidden>Confirmar asistencia</a>
+  <button type="button" class="disco" id="disco" aria-pressed="false" aria-label="Reproducir música" hidden>
+    <span class="disco-etiqueta" aria-hidden="true"></span>
+  </button>
+  <audio id="musica" loop preload="none"></audio>
+
+  <!-- ===================== VISOR DE FOTOS ===================== -->
+  <div class="visor" id="visor" role="dialog" aria-modal="true" aria-label="Foto ampliada" hidden>
+    <button type="button" class="visor-boton visor-cerrar" id="visor-cerrar" aria-label="Cerrar"></button>
+    <button type="button" class="visor-boton visor-anterior" id="visor-anterior" aria-label="Foto anterior"></button>
+    <img id="visor-imagen" alt="">
+    <button type="button" class="visor-boton visor-siguiente" id="visor-siguiente" aria-label="Foto siguiente"></button>
+    <p class="visor-contador" id="visor-contador"></p>
+  </div>
+
+  <div id="petalos" class="petalos" aria-hidden="true"></div>
+  <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+</body>
+</html>

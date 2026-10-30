@@ -210,6 +210,8 @@ Boda/
 
 ### 3. Música
 
+Ahora suena **"Un pacto con Dios"** de Juan Carlos Fernández (`assets/musica/un-pacto-con-dios.mp3`), desde el inicio. Para cambiarla:
+
 1. Copia tu canción en formato `.mp3` a `assets/musica/`.
 2. En `js/config.js`: `musica: { archivo: "assets/musica/mi-cancion.mp3", titulo: "Nombre de la canción" }`.
 3. Para no usar música: `musica: null,`.

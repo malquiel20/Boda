@@ -224,8 +224,8 @@ window.BODA = {
   // Música de fondo (se reproduce al abrir el sobre)
   // ---------------------------------------------------------------
   musica: {
-    archivo: "assets/musica/melodia-ejemplo.mp3",
-    titulo: "Melodía de ejemplo",
+    archivo: "assets/musica/un-pacto-con-dios.mp3",
+    titulo: "Un pacto con Dios · Juan Carlos Fernández",
   },
 
   // ---------------------------------------------------------------

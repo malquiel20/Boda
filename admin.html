@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>Panel de invitados · Boda</title>
   <meta name="theme-color" content="#fbf8f2">
@@ -16,103 +16,139 @@
   <script src="js/admin.js" defer></script>
 </head>
 <body class="admin">
-  <header class="admin-cabecera">
-    <div>
-      <p class="eyebrow">Panel de los novios</p>
-      <h1 id="admin-titulo">Nuestra boda</h1>
-      <p class="admin-modo" id="admin-modo"></p>
+  <header class="panel-cabecera">
+    <div class="panel-ancho panel-cabecera-in">
+      <div>
+        <p class="eyebrow">Panel de los novios</p>
+        <h1 id="admin-titulo">Nuestra boda</h1>
+      </div>
+      <div class="cabecera-acciones">
+        <button type="button" class="boton-icono" id="admin-recargar" aria-label="Actualizar respuestas" title="Actualizar respuestas"></button>
+        <a class="boton boton-claro boton-mini boton-ver" id="ver-invitacion" href="./" target="_blank" rel="noopener" aria-label="Ver invitación" data-icono="ojo"><span>Ver invitación</span></a>
+      </div>
     </div>
-    <a class="boton boton-claro" href="./" target="_blank" rel="noopener">Ver invitación</a>
   </header>
 
-  <main class="admin-main">
-    <!-- Respuestas -->
-    <section class="admin-panel" aria-labelledby="t-resumen">
-      <div class="admin-panel-cabecera">
-        <h2 id="t-resumen">Resumen de confirmaciones</h2>
-      </div>
-      <form class="admin-conexion" id="admin-conexion" hidden>
-        <label for="admin-clave">Clave del panel (la misma de tu Google Apps Script)</label>
-        <div class="admin-fila">
-          <input id="admin-clave" type="password" autocomplete="current-password" required>
-          <button type="submit" class="boton">Cargar respuestas</button>
+  <!-- Menú: abajo en el celular, arriba en el computador -->
+  <nav class="pestanas" id="pestanas" aria-label="Secciones del panel">
+    <div class="panel-ancho pestanas-in">
+      <a href="#inicio" data-pestana="inicio" data-icono="casa"><span>Inicio</span></a>
+      <a href="#invitados" data-pestana="invitados" data-icono="personas"><span>Invitados</span><span class="globo" id="globo-pendientes" hidden></span></a>
+      <a href="#mensajes" data-pestana="mensajes" data-icono="chat"><span>Mensajes</span></a>
+      <a href="#herramientas" data-pestana="herramientas" data-icono="ajustes"><span>Herramientas</span></a>
+    </div>
+  </nav>
+
+  <div class="panel-ancho panel-avisos">
+    <p class="aviso-modo" id="aviso-modo" hidden></p>
+    <p class="admin-estado" id="admin-estado" role="status" aria-live="polite"></p>
+  </div>
+
+  <!-- Pantalla de clave (solo cuando está conectado a Google Sheets) -->
+  <form class="bloqueo" id="admin-conexion" hidden>
+    <span class="bloqueo-icono" id="bloqueo-icono"></span>
+    <h2>Escribe tu clave</h2>
+    <p>Es la clave que pusiste en el script de Google Sheets (<code>CLAVE_ADMIN</code>).</p>
+    <label class="visualmente-oculto" for="admin-clave">Clave</label>
+    <input id="admin-clave" type="password" autocomplete="current-password" required>
+    <button type="submit" class="boton">Ver respuestas</button>
+    <p class="bloqueo-error" id="bloqueo-error" role="alert" hidden></p>
+  </form>
+
+  <main class="panel-ancho panel-main" id="panel-contenido">
+
+    <!-- ============ INICIO ============ -->
+    <section class="pestana" id="p-inicio" aria-labelledby="t-inicio">
+      <h2 class="visualmente-oculto" id="t-inicio">Inicio</h2>
+      <div class="inicio-grid">
+        <div class="columna">
+          <article class="tarjeta-panel tarjeta-cuenta" id="cuenta-boda"></article>
+          <article class="tarjeta-panel" id="progreso"></article>
+          <article class="tarjeta-panel" id="que-sigue"></article>
         </div>
-      </form>
-      <div class="admin-fila" id="admin-acciones-demo" hidden>
-        <button type="button" class="boton boton-claro" id="admin-recargar">Actualizar</button>
-        <button type="button" class="boton boton-claro" id="admin-borrar-demo">Borrar respuestas de prueba</button>
+        <div class="columna">
+          <article class="tarjeta-panel" id="catering"></article>
+          <article class="tarjeta-panel" id="ultimas"></article>
+        </div>
       </div>
-      <p class="admin-estado" id="admin-estado" role="status" aria-live="polite"></p>
-      <div class="resumen-grid" id="resumen"></div>
-      <div id="restricciones"></div>
     </section>
 
-    <!-- Invitados -->
-    <section class="admin-panel" aria-labelledby="t-invitados">
-      <div class="admin-panel-cabecera">
-        <h2 id="t-invitados">Invitados y enlaces personales</h2>
-        <p>Copia el enlace de cada invitado o envíaselo directamente por WhatsApp.</p>
+    <!-- ============ INVITADOS ============ -->
+    <section class="pestana" id="p-invitados" aria-labelledby="t-invitados" hidden>
+      <div class="tab-cabeza">
+        <h2 id="t-invitados">Invitados</h2>
+        <p>Toca un nombre para ver su respuesta. Con el botón <strong>Enviar</strong> le mandas su invitación por WhatsApp.</p>
       </div>
-      <div class="admin-herramientas">
-        <input type="search" id="buscar" placeholder="Buscar invitado…" aria-label="Buscar invitado">
-        <select id="filtro" aria-label="Filtrar por estado">
-          <option value="todos">Todos</option>
-          <option value="pendiente">Pendientes</option>
-          <option value="si">Asistirán</option>
-          <option value="no">No asistirán</option>
-        </select>
-      </div>
+      <input type="search" class="buscador" id="buscar" placeholder="Buscar por nombre…" aria-label="Buscar invitado">
+      <div class="filtros" id="filtros" role="group" aria-label="Mostrar invitados"></div>
       <div class="lista-invitados" id="lista-invitados"></div>
     </section>
 
-    <!-- Mensajes -->
-    <section class="admin-panel" aria-labelledby="t-mensajes">
-      <div class="admin-panel-cabecera">
+    <!-- ============ MENSAJES ============ -->
+    <section class="pestana" id="p-mensajes" aria-labelledby="t-mensajes" hidden>
+      <div class="tab-cabeza">
         <h2 id="t-mensajes">Mensajes y canciones</h2>
+        <p>Lo que les escribieron sus invitados al confirmar.</p>
       </div>
-      <div id="mensajes"></div>
-    </section>
-
-    <!-- Exportar -->
-    <section class="admin-panel" aria-labelledby="t-exportar">
-      <div class="admin-panel-cabecera">
-        <h2 id="t-exportar">Exportar a Excel</h2>
-        <p>Descarga las respuestas en formato CSV (se abre con Excel o Google Sheets).</p>
-      </div>
-      <div class="admin-fila">
-        <button type="button" class="boton" id="exportar-respuestas">Respuestas por invitación</button>
-        <button type="button" class="boton boton-claro" id="exportar-asistentes">Lista de asistentes (para mesas y menú)</button>
+      <div class="mensajes-grid">
+        <div class="lista-mensajes" id="mensajes"></div>
+        <article class="tarjeta-panel" id="canciones"></article>
       </div>
     </section>
 
-    <!-- QR -->
-    <section class="admin-panel" aria-labelledby="t-qr">
-      <div class="admin-panel-cabecera">
-        <h2 id="t-qr">Códigos QR para imprimir</h2>
-        <p>Ponlos en las mesas el día de la boda o en invitaciones impresas.</p>
+    <!-- ============ HERRAMIENTAS ============ -->
+    <section class="pestana" id="p-herramientas" aria-labelledby="t-herramientas" hidden>
+      <div class="tab-cabeza">
+        <h2 id="t-herramientas">Herramientas</h2>
       </div>
-      <div class="qr-grid" id="qr-grid"></div>
-    </section>
+      <div class="herramientas-grid">
+        <article class="tarjeta-panel" id="h-excel">
+          <h3 class="tarjeta-titulo" data-icono="tabla">Descargar en Excel</h3>
+          <p class="texto-suave">Para revisar las respuestas con calma o pasarle la lista al catering y a quien organiza las mesas.</p>
+          <div class="opciones-descarga">
+            <button type="button" class="opcion-descarga descarga" id="exportar-respuestas">
+              <strong>Respuestas por invitación</strong><span>Una fila por invitación: estado, personas, mensaje.</span>
+            </button>
+            <button type="button" class="opcion-descarga descarga" id="exportar-asistentes">
+              <strong>Lista de asistentes</strong><span>Una fila por persona, con sus restricciones alimentarias.</span>
+            </button>
+          </div>
+        </article>
 
-    <!-- Generador -->
-    <section class="admin-panel" aria-labelledby="t-generador">
-      <div class="admin-panel-cabecera">
-        <h2 id="t-generador">Generador de la lista de invitados</h2>
-        <p>Pega tu lista desde Excel o escríbela, una invitación por línea: <strong>nombre, cupos, teléfono</strong>.
-          Te genera el archivo <code>js/invitados.js</code> listo para reemplazar. Los invitados que ya existen conservan su enlace.</p>
-      </div>
-      <label class="admin-etiqueta" for="gen-entrada">Tu lista</label>
-      <textarea id="gen-entrada" rows="7" placeholder="Familia Pérez, 4, 573001234567&#10;Ana y Luis, 2&#10;Carolina Mejía, 1"></textarea>
-      <div class="admin-fila">
-        <button type="button" class="boton" id="gen-crear">Generar archivo</button>
-      </div>
-      <div id="gen-resultado" hidden>
-        <label class="admin-etiqueta" for="gen-salida">Contenido de js/invitados.js</label>
-        <textarea id="gen-salida" rows="10" readonly></textarea>
-        <div class="admin-fila">
-          <button type="button" class="boton" id="gen-copiar">Copiar</button>
-          <button type="button" class="boton boton-claro" id="gen-descargar">Descargar invitados.js</button>
-        </div>
+        <article class="tarjeta-panel" id="h-qr">
+          <h3 class="tarjeta-titulo" data-icono="qr">Códigos QR para imprimir</h3>
+          <p class="texto-suave">Ponlos en las mesas el día de la boda o en invitaciones impresas.</p>
+          <div class="qr-grid" id="qr-grid"></div>
+        </article>
+
+        <article class="tarjeta-panel" id="h-generador">
+          <h3 class="tarjeta-titulo" data-icono="agregar">Agregar o cambiar invitados</h3>
+          <ol class="pasos">
+            <li>Escribe o pega tu lista desde Excel. Una invitación por línea: <strong>nombre, cupos, teléfono</strong> (el teléfono es opcional).</li>
+            <li>Toca <strong>Crear lista</strong>.</li>
+            <li>Descarga el archivo y reemplaza <code>js/invitados.js</code> en GitHub. Los invitados que ya estaban conservan su enlace.</li>
+          </ol>
+          <label class="visualmente-oculto" for="gen-entrada">Tu lista de invitados</label>
+          <textarea id="gen-entrada" rows="6" placeholder="Familia Pérez, 4, 573001234567&#10;Ana y Luis, 2&#10;Carolina Mejía, 1"></textarea>
+          <div class="admin-fila">
+            <button type="button" class="boton" id="gen-crear">Crear lista</button>
+          </div>
+          <div id="gen-resultado" hidden>
+            <p class="gen-resumen" id="gen-resumen"></p>
+            <ul class="gen-nombres" id="gen-nombres"></ul>
+            <div class="admin-fila">
+              <button type="button" class="boton descarga" id="gen-descargar">Descargar invitados.js</button>
+              <button type="button" class="boton boton-claro" id="gen-copiar">Copiar contenido</button>
+            </div>
+            <details class="gen-codigo">
+              <summary>Ver el contenido del archivo</summary>
+              <label class="visualmente-oculto" for="gen-salida">Contenido de js/invitados.js</label>
+              <textarea id="gen-salida" rows="9" readonly></textarea>
+            </details>
+          </div>
+        </article>
+
+        <article class="tarjeta-panel" id="h-conexion"></article>
       </div>
     </section>
   </main>

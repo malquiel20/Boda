@@ -85,27 +85,55 @@ La invitación se recorre de arriba hacia abajo:
 
 ## Panel de los novios (admin.html)
 
-Abre `https://tu-pagina/admin.html` para ver y administrar todo:
+Abre `https://tu-pagina/admin.html`. Funciona como una aplicación: en el celular tiene un **menú abajo** con cuatro secciones (en el computador el menú está arriba). El botón ↻ de arriba actualiza las respuestas y el del ojo abre la invitación.
 
-- **Resumen**:
-  - invitaciones y cupos totales;
-  - **personas confirmadas**, separando adultos y niños;
-  - cuántas invitaciones **no asistirán** y cuántas están **sin responder**.
-- **Restricciones alimentarias**: total de vegetarianos, veganos, celíacos, etc., y la lista de alergias, para pasársela al catering.
-- **Lista de invitados** con su estado (Pendiente / Asistirá / No asistirá). Para cada invitado:
-  - **Copiar enlace** personal.
-  - **WhatsApp**: abre WhatsApp con un mensaje listo que incluye el nombre del invitado, sus cupos y su enlace. Si el invitado tiene teléfono en la lista, se abre directo su chat.
-  - **Abrir** su invitación, para ver lo que verá él.
-  - **Ver respuesta**: quién respondió, las personas que asistirán, sus restricciones y su mensaje.
-- **Buscador y filtro** por estado (pendientes, confirmados, no asisten).
-- **Mensajes y canciones** que te dejaron los invitados.
-- **Exportar a Excel (CSV)**:
-  - respuestas por invitación;
-  - lista de asistentes, una fila por persona, útil para organizar las mesas y el menú.
-- **Códigos QR para imprimir** (para subir fotos y para la invitación general). Se pueden descargar y poner en las mesas.
-- **Generador de la lista de invitados.** Pegas tu lista desde Excel (nombre, cupos, teléfono) y te arma el archivo `js/invitados.js` completo. Los invitados que ya estaban conservan su enlace.
+### 🏠 Inicio: cómo va todo, de un vistazo
 
-Con Google Sheets conectado, el panel pide la **clave** que pusiste en el script antes de mostrar las respuestas. En modo demostración muestra las respuestas de prueba guardadas en ese navegador.
+- **Cuenta regresiva**: cuántos días faltan para la boda y para la fecha límite de confirmación.
+- **Confirmaciones**: "3 de 5 invitaciones ya respondieron", con una **barra de colores** (verde: asistirán, rojo: no asistirán, beige: sin responder). Si tocas cualquiera de esos grupos, se abre la lista de esos invitados.
+- **Cuántas personas asistirán**, separadas en adultos y niños, y cuántos cupos faltan por confirmar.
+- **¿Qué sigue?**: el panel te dice qué hacer, con un botón para cada cosa. Por ejemplo:
+  - "Envía a cada invitado su invitación";
+  - "2 invitaciones siguen sin responder: envíales un recordatorio";
+  - "Ya tienes la lista para el catering".
+- **Para el catering**: cuántos vegetarianos, veganos, celíacos o alérgicos hay, y quiénes son.
+- **Últimas respuestas**: quién confirmó y cuándo ("Ana Torres confirmó 2 personas · ayer").
+
+### 👥 Invitados: enviar las invitaciones y ver las respuestas
+
+- **Filtros con contador**: Todos · Sin responder · Asistirán · No asistirán. También hay un **buscador** por nombre.
+- Cada invitado muestra su estado con color.
+- El botón **Enviar** abre WhatsApp con el mensaje listo: el nombre del invitado, sus cupos y su enlace personal. Si el invitado tiene teléfono en la lista, se abre directo su chat.
+- Cuando lo envías, el invitado queda marcado como **"Enviada"** en ese dispositivo, para que sepas a quién ya le mandaste.
+- **Al tocar un nombre** se abre el detalle:
+  - quién respondió y cuándo;
+  - las personas que asistirán, con sus restricciones;
+  - su mensaje y su canción.
+  - También están los botones **Enviar recordatorio** (solo si no ha respondido), **Copiar enlace** y **Ver su invitación**.
+- El menú muestra en rojo cuántos invitados están **sin responder**.
+
+### 💬 Mensajes
+
+- Los **mensajes** que les dejaron sus invitados, del más reciente al más antiguo.
+- Las **canciones sugeridas**, con un botón para **copiar la lista y pasársela al DJ**.
+
+### 🛠️ Herramientas
+
+- **Descargar en Excel**:
+  - *Respuestas por invitación*;
+  - *Lista de asistentes*, una fila por persona con sus restricciones, para las mesas y el menú.
+- **Códigos QR para imprimir**: uno para subir fotos y otro para la invitación general.
+- **Agregar o cambiar invitados**, en 3 pasos:
+  1. Pegas tu lista desde Excel (nombre, cupos, teléfono).
+  2. Tocas *Crear lista*.
+  3. Descargas el archivo `invitados.js`. Los invitados que ya estaban conservan su enlace.
+- **Conexión**: indica si el panel está conectado a Google Sheets o en modo de prueba.
+  - Conectado: puedes cerrar la sesión en ese dispositivo.
+  - Modo de prueba: puedes borrar las respuestas de prueba. Pide tocar dos veces para no borrarlas por error.
+
+Con Google Sheets conectado, el panel primero muestra una pantalla que pide la **clave** que pusiste en el script. Sin la clave nadie ve las respuestas. En modo de prueba muestra solo las respuestas guardadas en ese navegador.
+
+Para cambiar los mensajes de WhatsApp, edita `mensajeInvitacion` y `mensajeRecordatorio` en `js/config.js`.
 
 ---
 
@@ -157,6 +185,7 @@ Boda/
 | `rsvp.whatsapp` | `"573001234567"` | Opcional. Con código de país, sin `+` ni espacios. |
 | `rsvp.permitirSinEnlace` | `true` / `false` | `false`: solo confirman quienes tengan enlace personal. |
 | `mensajeInvitacion` | texto con `{nombre}`, `{enlace}`, `{cupos}` | Es el mensaje que se envía por WhatsApp desde el panel. |
+| `mensajeRecordatorio` | texto con `{nombre}`, `{enlace}`, `{fechaLimite}` | Recordatorio para quienes no han respondido. |
 
 **Para quitar una sección**, ponle `null`. Ejemplo: `regalos: null,` o `familia: null,`. La sección desaparece de la página.
 
@@ -229,7 +258,7 @@ El enlace de ese invitado es `https://tu-pagina/?i=familia-perez-k7m2`.
 3. Toca **Generar archivo** y luego **Descargar invitados.js**.
 4. Reemplaza el archivo `js/invitados.js` del proyecto por el descargado.
 
-**Para enviar las invitaciones:** en `admin.html`, toca **WhatsApp** al lado de cada invitado. Se abre el mensaje listo con su enlace personal.
+**Para enviar las invitaciones:** en `admin.html`, entra a **Invitados** y toca **Enviar** al lado de cada nombre. Se abre WhatsApp con el mensaje listo y su enlace personal.
 
 ---
 

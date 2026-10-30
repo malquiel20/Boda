@@ -228,10 +228,12 @@ window.BODA = {
   },
 
   // ---------------------------------------------------------------
-  // Mensaje para enviar la invitación por WhatsApp desde el panel
+  // Mensajes para enviar por WhatsApp desde el panel (admin.html)
   // {nombre}, {enlace} y {cupos} se reemplazan automáticamente.
   // ---------------------------------------------------------------
   mensajeInvitacion: "¡Hola {nombre}! Con mucha alegría queremos invitarte a nuestra boda. Esta es tu invitación personal (válida para {cupos}): {enlace}",
+  // Recordatorio para quienes no han respondido. También acepta {fechaLimite}.
+  mensajeRecordatorio: "¡Hola {nombre}! Te recordamos confirmar tu asistencia a nuestra boda antes del {fechaLimite}. Puedes hacerlo aquí: {enlace}",
 
   // Dirección pública de la página (ej: https://usuario.github.io/Boda/).
   // Si la dejas vacía se usa la dirección actual del navegador.

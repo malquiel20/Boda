@@ -1,6 +1,6 @@
 /*
- * Panel de los novios (admin.html): resumen de confirmaciones, enlaces
- * personales, envío por WhatsApp, exportación y generador de invitados.
+ * Panel de los novios (admin.html): resumen de confirmaciones, lista de
+ * invitados con envío por WhatsApp, mensajes, descargas y generador.
  */
 (function () {
   "use strict";
@@ -11,20 +11,59 @@
   const esc = U.esc;
   const icono = U.icono;
   const $ = function (sel, ctx) { return (ctx || document).querySelector(sel); };
+  const $$ = function (sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); };
+
   const CLAVE_SESION = "boda-admin-clave";
+  const CLAVE_ENVIADAS = "boda-invitaciones-enviadas";
+  const PESTANAS = ["inicio", "invitados", "mensajes", "herramientas"];
+  const ETIQUETAS = { pendiente: "Sin responder", si: "Asistirá", no: "No asistirá" };
+  const modoGoogle = !!R.urlGoogleScript;
 
   let respuestas = [];
+  let filtro = "todos";
+
+  function plural(n, uno, varios) { return n + " " + (n === 1 ? uno : varios); }
 
   function claveDe(x) {
     return x.codigo ? "c:" + String(x.codigo).toLowerCase() : "n:" + String(x.invitado || x.nombre || "").trim().toLowerCase();
   }
 
-  // ---------- Carga de respuestas ----------
+  function estado(texto) { $("#admin-estado").textContent = texto; }
+
+  // =================================================================
+  //  NAVEGACIÓN POR PESTAÑAS
+  // =================================================================
+  function pestanaActual() {
+    const h = window.location.hash.slice(1);
+    return PESTANAS.indexOf(h) >= 0 ? h : "inicio";
+  }
+
+  function mostrarPestana() {
+    const actual = pestanaActual();
+    PESTANAS.forEach(function (p) { $("#p-" + p).hidden = p !== actual; });
+    $$("[data-pestana]").forEach(function (a) {
+      if (a.dataset.pestana === actual) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+  }
+
+  function irA(pestana, nuevoFiltro) {
+    if (nuevoFiltro) filtro = nuevoFiltro;
+    if (pestanaActual() === pestana) {
+      pintarTodo();
+      mostrarPestana();
+    } else {
+      window.location.hash = pestana;
+    }
+    window.scrollTo(0, 0);
+  }
+
+  // =================================================================
+  //  CARGA DE RESPUESTAS
+  // =================================================================
   function cargarDemo() {
     respuestas = U.leer(U.CLAVE_DEMO, []);
-    estado(respuestas.length
-      ? "Mostrando " + respuestas.length + " respuesta(s) de prueba guardadas en este navegador."
-      : "Aún no hay respuestas de prueba en este navegador. Llena el formulario de la invitación para verlas aquí.");
+    estado("");
     pintarTodo();
   }
 
@@ -38,23 +77,53 @@
         if (!res.ok) throw new Error(res.error || "Error desconocido");
         try { window.sessionStorage.setItem(CLAVE_SESION, clave); } catch (e) { /* sin almacenamiento */ }
         respuestas = res.respuestas || [];
-        estado(respuestas.length + " respuesta(s) cargadas desde Google Sheets · " +
-          new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }));
+        abrirPanel();
+        estado("Actualizado a las " + new Date().toLocaleTimeString("es", { hour: "numeric", minute: "2-digit" }));
         pintarTodo();
       })
       .catch(function (err) {
         console.error(err);
-        estado(err.message === "Clave incorrecta"
-          ? "La clave no es correcta."
-          : "No se pudieron cargar las respuestas (" + err.message + "). Revisa la URL del script en js/config.js.");
+        const texto = err.message === "Clave incorrecta"
+          ? "La clave no es correcta. Revisa mayúsculas y espacios."
+          : "No se pudieron cargar las respuestas (" + err.message + "). Revisa tu conexión o la URL del script en js/config.js.";
+        estado("");
+        if (!$("#admin-conexion").hidden) {
+          $("#bloqueo-error").textContent = texto;
+          $("#bloqueo-error").hidden = false;
+        } else {
+          estado(texto);
+        }
       });
   }
 
-  function estado(texto) { $("#admin-estado").textContent = texto; }
+  function recargar() {
+    if (!modoGoogle) {
+      cargarDemo();
+      U.aviso("Respuestas actualizadas");
+      return;
+    }
+    let clave = "";
+    try { clave = window.sessionStorage.getItem(CLAVE_SESION) || ""; } catch (e) { clave = ""; }
+    if (clave) cargarGoogle(clave); else cerrarPanel();
+  }
 
-  function plural(n, uno, varios) { return n + " " + (n === 1 ? uno : varios); }
+  function cerrarPanel() {
+    try { window.sessionStorage.removeItem(CLAVE_SESION); } catch (e) { /* sin almacenamiento */ }
+    document.body.classList.add("panel-cerrado");
+    $("#admin-conexion").hidden = false;
+    $("#admin-clave").value = "";
+    $("#admin-clave").focus();
+  }
 
-  // ---------- Estado por invitado ----------
+  function abrirPanel() {
+    document.body.classList.remove("panel-cerrado");
+    $("#admin-conexion").hidden = true;
+    $("#bloqueo-error").hidden = true;
+  }
+
+  // =================================================================
+  //  DATOS
+  // =================================================================
   function mapaRespuestas() {
     const m = {};
     respuestas.forEach(function (r) {
@@ -89,124 +158,282 @@
     return f.respuesta.asistira ? "si" : "no";
   }
 
-  // ---------- Resumen ----------
-  function pintarResumen(lista) {
-    let cupos = 0, personas = 0, adultos = 0, ninos = 0, noAsisten = 0, pendientes = 0, cuposPendientes = 0;
-    const restricciones = {};
-    const otras = [];
+  function contar(lista) {
+    const c = { invitaciones: 0, cupos: 0, si: 0, no: 0, pendientes: 0, cuposPendientes: 0, personas: 0, adultos: 0, ninos: 0, restricciones: {}, otras: [] };
     lista.forEach(function (f) {
-      const c = Number(f.invitado.cupos) || 0;
-      if (!f.invitado.fuera) cupos += c;
+      const cupos = Number(f.invitado.cupos) || 0;
+      if (!f.invitado.fuera) { c.invitaciones++; c.cupos += cupos; }
       const e = estadoDe(f);
-      if (e === "pendiente") { pendientes++; cuposPendientes += c; return; }
-      if (e === "no") { noAsisten++; return; }
+      if (e === "pendiente") { c.pendientes++; c.cuposPendientes += cupos; return; }
+      if (e === "no") { c.no++; return; }
+      c.si++;
       (f.respuesta.personas || []).forEach(function (p) {
-        personas++;
-        if (p.tipo === "Niño") ninos++; else adultos++;
-        (p.restricciones || []).forEach(function (x) { restricciones[x] = (restricciones[x] || 0) + 1; });
-        if (p.otra) otras.push(p.nombre + ": " + p.otra);
+        c.personas++;
+        if (p.tipo === "Niño") c.ninos++; else c.adultos++;
+        (p.restricciones || []).forEach(function (x) { (c.restricciones[x] = c.restricciones[x] || []).push(p.nombre); });
+        if (p.otra) c.otras.push({ nombre: p.nombre, texto: p.otra });
       });
     });
-
-    const tarjetas = [
-      { n: U.INVITADOS.length, t: "Invitaciones", d: cupos + " cupos en total" },
-      { n: personas, t: "Personas confirmadas", d: plural(adultos, "adulto", "adultos") + " · " + plural(ninos, "niño", "niños"), destacado: true },
-      { n: noAsisten, t: "No asistirán", d: "invitaciones" },
-      { n: pendientes, t: "Sin responder", d: cuposPendientes + " cupos pendientes" },
-    ];
-    $("#resumen").innerHTML = tarjetas.map(function (x) {
-      return '<div class="resumen-tarjeta' + (x.destacado ? " destacado" : "") + '"><span class="resumen-num">' + x.n + '</span><span class="resumen-titulo">' +
-        esc(x.t) + '</span><span class="resumen-detalle">' + esc(x.d) + "</span></div>";
-    }).join("");
-
-    const claves = Object.keys(restricciones);
-    $("#restricciones").innerHTML = (claves.length || otras.length)
-      ? '<h3 class="admin-subtitulo">Restricciones alimentarias</h3><ul class="etiquetas">' +
-        claves.map(function (k) { return "<li>" + esc(k) + " <strong>" + restricciones[k] + "</strong></li>"; }).join("") + "</ul>" +
-        (otras.length ? '<ul class="admin-lista">' + otras.map(function (o) { return "<li>" + esc(o) + "</li>"; }).join("") + "</ul>" : "")
-      : "";
+    return c;
   }
 
-  // ---------- Lista de invitados ----------
-  function mensajeInvitacion(i) {
-    return String(B.mensajeInvitacion || "¡Hola {nombre}! Esta es tu invitación a nuestra boda: {enlace}")
+  function enviadas() { return U.leer(CLAVE_ENVIADAS, {}); }
+
+  function haceCuanto(iso) {
+    const f = new Date(iso);
+    if (isNaN(f)) return "";
+    const s = (f.getTime() - Date.now()) / 1000;
+    const abs = Math.abs(s);
+    if (s > 60 || abs > 86400 * 30) return f.toLocaleDateString("es", { day: "numeric", month: "short" });
+    if (abs < 60) return "hace un momento";
+    const rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+    if (abs < 3600) return rtf.format(Math.round(s / 60), "minute");
+    if (abs < 86400) return rtf.format(Math.round(s / 3600), "hour");
+    return rtf.format(Math.round(s / 86400), "day");
+  }
+
+  function diasHasta(fecha) {
+    return Math.ceil((fecha.getTime() - Date.now()) / 86400000);
+  }
+
+  function inicialesDe(nombre) {
+    const palabras = String(nombre || "").split(/\s+/).filter(function (p) { return p && !/^(y|e|de|del|la|los|las)$/i.test(p); });
+    return ((palabras[0] || "").charAt(0) + (palabras[1] || "").charAt(0)).toUpperCase() || "?";
+  }
+
+  function fechaLimiteTexto() {
+    const l = U.fechaLimiteRsvp();
+    return l ? U.formatearFecha(l, { day: "numeric", month: "long" }) : "";
+  }
+
+  function mensaje(plantilla, i) {
+    return String(plantilla)
       .replace(/\{nombre\}/g, i.nombre)
       .replace(/\{enlace\}/g, U.enlaceInvitado(i.codigo))
-      .replace(/\{cupos\}/g, U.textoCupos(i.cupos));
+      .replace(/\{cupos\}/g, U.textoCupos(i.cupos))
+      .replace(/\{fechaLimite\}/g, fechaLimiteTexto() || "la fecha indicada");
   }
 
-  const ETIQUETAS = { pendiente: "Pendiente", si: "Asistirá", no: "No asistirá" };
+  function enlaceEnviar(i, recordatorio) {
+    const plantilla = recordatorio
+      ? B.mensajeRecordatorio || "¡Hola {nombre}! Te recordamos confirmar tu asistencia a nuestra boda: {enlace}"
+      : B.mensajeInvitacion || "¡Hola {nombre}! Esta es tu invitación a nuestra boda: {enlace}";
+    return U.enlaceWhatsApp(i.telefono, mensaje(plantilla, i));
+  }
+
+  // Atributos del enlace "Ver su invitación"
+  function atributosVer(i) {
+    return 'href="' + esc(U.enlaceInvitado(i.codigo)) + '" target="_blank" rel="noopener"';
+  }
+
+  // =================================================================
+  //  INICIO
+  // =================================================================
+  function pintarInicio(lista, c) {
+    // Cuenta regresiva
+    const fecha = U.fechaBoda();
+    let cuenta = "";
+    if (fecha) {
+      const dias = diasHasta(fecha);
+      const titulo = dias > 1 ? "Faltan <strong>" + dias + " días</strong>" : dias === 1 ? "¡Mañana es la boda!" : dias === 0 ? "¡Hoy es el gran día!" : "¡Ya se casaron!";
+      cuenta = '<p class="cuenta-titulo">' + titulo + '</p><p class="cuenta-fecha">' +
+        esc(U.capitalizar(U.formatearFecha(fecha, { weekday: "long", day: "numeric", month: "long", year: "numeric" }))) + "</p>";
+      const limite = U.fechaLimiteRsvp();
+      if (limite) {
+        const dl = diasHasta(limite);
+        cuenta += '<p class="cuenta-limite">' + icono("reloj") + "<span>" + (dl >= 0
+          ? "Fecha límite para confirmar: <strong>" + esc(fechaLimiteTexto()) + "</strong> (" + (dl === 0 ? "es hoy" : "faltan " + plural(dl, "día", "días")) + ")"
+          : "La fecha límite para confirmar ya pasó (" + esc(fechaLimiteTexto()) + ")") + "</span></p>";
+      }
+    }
+    $("#cuenta-boda").innerHTML = cuenta;
+    $("#cuenta-boda").hidden = !cuenta;
+
+    // Progreso de confirmaciones
+    const total = c.invitaciones || 1;
+    const respondieron = c.si + c.no;
+    const pct = function (n) { return (n / total * 100).toFixed(1) + "%"; };
+    $("#progreso").innerHTML =
+      '<h3 class="tarjeta-titulo">Confirmaciones</h3>' +
+      '<p class="progreso-texto"><strong>' + respondieron + "</strong> de " + plural(c.invitaciones, "invitación", "invitaciones") + " ya respondieron</p>" +
+      '<div class="barra" role="img" aria-label="' + c.si + " asistirán, " + c.no + " no asistirán, " + c.pendientes + ' sin responder">' +
+      '<span class="barra-si" style="width:' + pct(c.si) + '"></span><span class="barra-no" style="width:' + pct(c.no) + '"></span></div>' +
+      '<ul class="leyenda">' +
+      [["si", "Asistirán", c.si], ["no", "No asistirán", c.no], ["pendiente", "Sin responder", c.pendientes]].map(function (x) {
+        return '<li><button type="button" class="leyenda-fila" data-ir-filtro="' + x[0] + '"><span class="punto est-' + x[0] + '"></span>' +
+          "<span>" + x[1] + "</span><strong>" + x[2] + "</strong>" + icono("derecha", "leyenda-flecha") + "</button></li>";
+      }).join("") + "</ul>" +
+      '<div class="cifras">' +
+      '<div class="cifra cifra-principal"><strong>' + c.personas + "</strong><span>" + (c.personas === 1 ? "persona asistirá" : "personas asistirán") + "</span></div>" +
+      '<div class="cifra"><strong>' + c.adultos + "</strong><span>" + (c.adultos === 1 ? "adulto" : "adultos") + "</span></div>" +
+      '<div class="cifra"><strong>' + c.ninos + "</strong><span>" + (c.ninos === 1 ? "niño" : "niños") + "</span></div>" +
+      '<div class="cifra"><strong>' + c.cuposPendientes + "</strong><span>cupos sin confirmar</span></div>" +
+      "</div>";
+
+    // ¿Qué sigue?
+    const tareas = [];
+    const yaEnviadas = Object.keys(enviadas()).length;
+    if (!U.INVITADOS.length) {
+      tareas.push({ icono: "agregar", texto: "Todavía no hay invitados en la lista.", boton: "Agregar invitados", ir: "herramientas" });
+    } else if (!yaEnviadas && c.pendientes) {
+      tareas.push({ icono: "chat", texto: "Envía a cada invitado su invitación personal por WhatsApp.", boton: "Enviar invitaciones", ir: "invitados", filtro: "todos" });
+    }
+    if (c.pendientes && U.INVITADOS.length) {
+      tareas.push({ icono: "campana", texto: plural(c.pendientes, "invitación sigue", "invitaciones siguen") + " sin responder. Puedes enviarles un recordatorio.", boton: "Ver pendientes", ir: "invitados", filtro: "pendiente" });
+    }
+    if (c.personas) {
+      tareas.push({ icono: "tabla", texto: "Ya tienes la lista de asistentes y sus restricciones para el catering.", boton: "Descargar", ir: "herramientas" });
+    }
+    if (!modoGoogle) {
+      tareas.push({ icono: "enlace", texto: "Estás en modo de prueba. Conecta Google Sheets para recibir las respuestas de tus invitados.", boton: "Ver cómo", ir: "herramientas" });
+    }
+    if (U.INVITADOS.length && !c.pendientes) {
+      tareas.unshift({ icono: "check", texto: "¡Todas las invitaciones ya respondieron!" });
+    }
+    $("#que-sigue").innerHTML = '<h3 class="tarjeta-titulo">¿Qué sigue?</h3><ul class="tareas">' + tareas.map(function (t) {
+      return '<li><span class="tarea-icono">' + icono(t.icono) + "</span><span class=\"tarea-texto\">" + esc(t.texto) + "</span>" +
+        (t.boton ? '<button type="button" class="boton boton-claro boton-mini" data-ir="' + t.ir + '"' + (t.filtro ? ' data-filtro-ir="' + t.filtro + '"' : "") + ">" + esc(t.boton) + "</button>" : "") +
+        "</li>";
+    }).join("") + "</ul>";
+
+    // Catering
+    const tipos = Object.keys(c.restricciones);
+    $("#catering").innerHTML = '<h3 class="tarjeta-titulo">Para el catering</h3>' +
+      '<p class="texto-suave">' + plural(c.personas, "persona confirmada", "personas confirmadas") + ": " + plural(c.adultos, "adulto", "adultos") + " y " + plural(c.ninos, "niño", "niños") + ".</p>" +
+      ((tipos.length || c.otras.length)
+        ? '<ul class="restricciones-lista">' +
+          tipos.map(function (t) {
+            return "<li><span>" + esc(t) + "</span><strong>" + c.restricciones[t].length + '</strong><small>' + esc(c.restricciones[t].join(", ")) + "</small></li>";
+          }).join("") +
+          c.otras.map(function (o) { return "<li><span>" + esc(o.texto) + "</span><strong>1</strong><small>" + esc(o.nombre) + "</small></li>"; }).join("") +
+          "</ul>"
+        : '<p class="vacio">Nadie ha indicado restricciones alimentarias todavía.</p>');
+
+    // Últimas respuestas
+    const recientes = lista.filter(function (f) { return f.respuesta; })
+      .sort(function (a, b) { return String(b.respuesta.fecha).localeCompare(String(a.respuesta.fecha)); })
+      .slice(0, 5);
+    $("#ultimas").innerHTML = '<h3 class="tarjeta-titulo">Últimas respuestas</h3>' +
+      (recientes.length
+        ? '<ul class="actividad">' + recientes.map(function (f) {
+          const r = f.respuesta;
+          const quien = r.respondidoPor || f.invitado.nombre;
+          const texto = r.asistira ? esc(quien) + " confirmó " + esc(U.textoCupos(r.cantidad)) : esc(quien) + " avisó que no podrá asistir";
+          return '<li><span class="avatar est-' + estadoDe(f) + '">' + esc(inicialesDe(f.invitado.nombre)) + "</span>" +
+            '<span class="actividad-texto"><span>' + texto + "</span><small>" + esc(f.invitado.nombre) + " · " + esc(haceCuanto(r.fecha)) + "</small></span></li>";
+        }).join("") + "</ul>" +
+          '<button type="button" class="boton boton-claro boton-mini" data-ir="invitados" data-filtro-ir="todos">Ver todos los invitados</button>'
+        : '<p class="vacio">Todavía no hay respuestas. Aquí verás las confirmaciones apenas lleguen.</p>');
+  }
+
+  // =================================================================
+  //  INVITADOS
+  // =================================================================
+  function pintarFiltros(c) {
+    const opciones = [["todos", "Todos", c.invitaciones], ["pendiente", "Sin responder", c.pendientes], ["si", "Asistirán", c.si], ["no", "No asistirán", c.no]];
+    $("#filtros").innerHTML = opciones.map(function (o) {
+      return '<button type="button" class="filtro" data-filtro="' + o[0] + '" aria-pressed="' + (filtro === o[0]) + '">' +
+        esc(o[1]) + ' <span class="filtro-num">' + o[2] + "</span></button>";
+    }).join("");
+    const globo = $("#globo-pendientes");
+    globo.textContent = c.pendientes;
+    globo.hidden = !c.pendientes;
+  }
+
+  function detalleRespuesta(r) {
+    if (!r) return '<p class="vacio">Todavía no responde.</p>';
+    const personas = (r.personas || []).map(function (p) {
+      const extra = (p.restricciones || []).concat(p.otra ? [p.otra] : []);
+      return "<li>" + icono(p.tipo === "Niño" ? "nino" : "personas") + "<span><strong>" + esc(p.nombre) + "</strong> · " + esc(p.tipo) +
+        (extra.length ? "<em>" + esc(extra.join(", ")) + "</em>" : "") + "</span></li>";
+    }).join("");
+    return '<p class="det-meta">Respondió <strong>' + esc(r.respondidoPor) + "</strong> · " + esc(haceCuanto(r.fecha)) + "</p>" +
+      (personas ? '<ul class="det-personas">' + personas + "</ul>" : "") +
+      (r.mensaje ? '<blockquote class="det-mensaje">' + esc(r.mensaje) + "</blockquote>" : "") +
+      (r.cancion ? '<p class="det-linea">' + icono("musica") + "<span>" + esc(r.cancion) + "</span></p>" : "") +
+      (r.telefono ? '<p class="det-linea">' + icono("chat") + "<span>" + esc(r.telefono) + "</span></p>" : "");
+  }
 
   function pintarInvitados(lista) {
     const texto = $("#buscar").value.trim().toLowerCase();
-    const filtro = $("#filtro").value;
+    const registro = enviadas();
     const visibles = lista.filter(function (f) {
       if (filtro !== "todos" && estadoDe(f) !== filtro) return false;
       return !texto || String(f.invitado.nombre).toLowerCase().indexOf(texto) >= 0;
     });
+    const abiertos = {};
+    $$(".invitado-detalle:not([hidden])").forEach(function (d) { abiertos[d.dataset.clave] = true; });
 
     if (!visibles.length) {
-      $("#lista-invitados").innerHTML = '<p class="admin-vacio">No hay invitados que coincidan.</p>';
+      $("#lista-invitados").innerHTML = '<p class="vacio">' + (U.INVITADOS.length ? "No hay invitados en este grupo." : "Todavía no hay invitados. Agrégalos en Herramientas.") + "</p>";
       return;
     }
 
-    $("#lista-invitados").innerHTML = visibles.map(function (f) {
+    $("#lista-invitados").innerHTML = visibles.map(function (f, n) {
       const i = f.invitado;
       const r = f.respuesta;
       const e = estadoDe(f);
-      const enlace = i.codigo ? U.enlaceInvitado(i.codigo) : "";
-      const detalle = r
-        ? '<details class="detalle"><summary>Ver respuesta</summary><p>Respondió: <strong>' + esc(r.respondidoPor) + "</strong>" +
-          (r.telefono ? " · Tel. " + esc(r.telefono) : "") + " · " + esc(formatoFecha(r.fecha)) + "</p>" +
-          ((r.personas || []).length ? "<ul>" + r.personas.map(function (p) {
-            const extra = (p.restricciones || []).concat(p.otra ? [p.otra] : []);
-            return "<li>" + esc(p.nombre) + " · " + esc(p.tipo) + (extra.length ? " · <em>" + esc(extra.join(", ")) + "</em>" : "") + "</li>";
-          }).join("") + "</ul>" : "") +
-          (r.mensaje ? "<blockquote>" + esc(r.mensaje) + "</blockquote>" : "") + "</details>"
-        : "";
-      return '<article class="fila-invitado">' +
-        '<div class="fila-info"><h3>' + esc(i.nombre) + (i.fuera ? ' <span class="fuera">fuera de la lista</span>' : "") + "</h3>" +
-        '<p class="fila-meta">' + esc(U.textoCupos(i.cupos)) + (i.codigo ? " · <code>" + esc(i.codigo) + "</code>" : "") + "</p></div>" +
-        '<span class="estado estado-' + e + '">' + ETIQUETAS[e] + (e === "si" ? " (" + r.cantidad + ")" : "") + "</span>" +
-        (enlace ? '<div class="fila-acciones">' +
-          '<button type="button" class="boton boton-claro boton-mini" data-copiar="' + esc(enlace) + '">' + icono("copiar") + "<span>Copiar enlace</span></button>" +
-          '<a class="boton boton-mini" href="' + esc(U.enlaceWhatsApp(i.telefono, mensajeInvitacion(i))) + '" target="_blank" rel="noopener">' + icono("chat") + "<span>WhatsApp</span></a>" +
-          '<a class="boton boton-claro boton-mini" href="' + esc(enlace) + '" target="_blank" rel="noopener">' + icono("enlace") + "<span>Abrir</span></a>" +
-          "</div>" : "") +
-        detalle + "</article>";
+      const k = claveDe({ codigo: i.codigo, invitado: i.nombre });
+      const enviada = i.codigo && registro[i.codigo];
+      const abierto = !!abiertos[k];
+      const idDet = "det-" + n;
+      const chip = '<span class="chip-estado est-' + e + '">' + ETIQUETAS[e] + (e === "si" ? " · " + r.cantidad : "") + "</span>";
+      return '<article class="invitado">' +
+        '<div class="invitado-fila">' +
+        '<button type="button" class="invitado-cabeza" data-abrir="' + idDet + '" aria-expanded="' + abierto + '" aria-controls="' + idDet + '">' +
+        '<span class="avatar est-' + e + '">' + esc(inicialesDe(i.nombre)) + "</span>" +
+        '<span class="invitado-info"><strong>' + esc(i.nombre) + "</strong>" +
+        '<span class="invitado-sub">' + chip + "<span>" + esc(U.textoCupos(i.cupos)) + "</span>" +
+        (enviada ? '<span class="enviada">' + icono("check") + "Enviada</span>" : "") +
+        (i.fuera ? '<span class="fuera">No está en la lista</span>' : "") + "</span></span>" +
+        icono("abajo", "invitado-flecha") + "</button>" +
+        (i.codigo ? '<a class="boton boton-mini boton-enviar' + (r ? " boton-claro" : "") + '" data-enviar="' + esc(i.codigo) + '" href="' + esc(enlaceEnviar(i, false)) +
+          '" target="_blank" rel="noopener">' + icono("chat") + "<span>Enviar</span></a>" : "") +
+        "</div>" +
+        '<div class="invitado-detalle" id="' + idDet + '" data-clave="' + esc(k) + '"' + (abierto ? "" : " hidden") + ">" +
+        detalleRespuesta(r) +
+        (i.codigo ? '<div class="det-acciones">' +
+          (e === "pendiente" ? '<a class="boton boton-mini" data-enviar="' + esc(i.codigo) + '" href="' + esc(enlaceEnviar(i, true)) + '" target="_blank" rel="noopener">' +
+            icono("campana") + "<span>Enviar recordatorio</span></a>" : "") +
+          '<button type="button" class="boton boton-claro boton-mini" data-copiar="' + esc(U.enlaceInvitado(i.codigo)) + '">' + icono("copiar") + "<span>Copiar enlace</span></button>" +
+          '<a class="boton boton-claro boton-mini" ' + atributosVer(i) + ">" + icono("enlace") + "<span>Ver su invitación</span></a>" +
+          "</div>" +
+          (enviada ? '<p class="det-nota">Invitación enviada desde este dispositivo el ' + esc(new Date(enviada).toLocaleDateString("es", { day: "numeric", month: "long" })) + ".</p>" : "")
+          : "") +
+        "</div></article>";
     }).join("");
   }
 
-  function formatoFecha(iso) {
-    const f = new Date(iso);
-    if (isNaN(f)) return "";
-    return f.toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  }
-
-  // ---------- Mensajes ----------
+  // =================================================================
+  //  MENSAJES Y CANCIONES
+  // =================================================================
   function pintarMensajes() {
-    const conMensaje = respuestas.filter(function (r) { return r.mensaje || r.cancion; });
-    if (!conMensaje.length) {
-      $("#mensajes").innerHTML = '<p class="admin-vacio">Aquí aparecerán los mensajes y canciones que te dejen tus invitados.</p>';
-      return;
-    }
-    $("#mensajes").innerHTML = conMensaje.map(function (r) {
-      return '<div class="mensaje"><p class="mensaje-autor">' + esc(r.respondidoPor || r.invitado) + " · " + esc(r.invitado) + "</p>" +
-        (r.mensaje ? "<blockquote>" + esc(r.mensaje) + "</blockquote>" : "") +
-        (r.cancion ? '<p class="mensaje-cancion">' + icono("musica") + esc(r.cancion) + "</p>" : "") + "</div>";
-    }).join("");
+    const ordenadas = respuestas.slice().sort(function (a, b) { return String(b.fecha).localeCompare(String(a.fecha)); });
+    const conMensaje = ordenadas.filter(function (r) { return r.mensaje; });
+    $("#mensajes").innerHTML = conMensaje.length
+      ? conMensaje.map(function (r) {
+        return '<article class="tarjeta-panel mensaje"><blockquote>' + esc(r.mensaje) + "</blockquote>" +
+          '<p class="mensaje-autor">' + esc(r.respondidoPor || r.invitado) + " · " + esc(r.invitado) + " · " + esc(haceCuanto(r.fecha)) + "</p></article>";
+      }).join("")
+      : '<article class="tarjeta-panel"><p class="vacio">Aquí aparecerán los mensajes que les dejen sus invitados.</p></article>';
+
+    const canciones = ordenadas.filter(function (r) { return r.cancion; });
+    $("#canciones").innerHTML = '<h3 class="tarjeta-titulo" data-icono="musica">Canciones sugeridas</h3>' +
+      (canciones.length
+        ? '<ol class="canciones">' + canciones.map(function (r) {
+          return "<li><strong>" + esc(r.cancion) + "</strong><small>Sugerida por " + esc(r.respondidoPor || r.invitado) + "</small></li>";
+        }).join("") + "</ol>" +
+          '<button type="button" class="boton boton-claro boton-mini" data-copiar="' + esc(canciones.map(function (r) { return r.cancion; }).join("\n")) + '">' +
+          icono("copiar") + "<span>Copiar lista para el DJ</span></button>"
+        : '<p class="vacio">Cuando tus invitados sugieran canciones, las verás aquí.</p>');
+    ponerIconosTitulos();
   }
 
-  function pintarTodo() {
-    const lista = filas();
-    pintarResumen(lista);
-    pintarInvitados(lista);
-    pintarMensajes();
-  }
-
-  // ---------- Exportar CSV ----------
-  function csv(filas) {
-    return "﻿" + filas.map(function (fila) {
+  // =================================================================
+  //  HERRAMIENTAS
+  // =================================================================
+  function csv(datos) {
+    return "﻿" + datos.map(function (fila) {
       return fila.map(function (v) {
         const t = String(v == null ? "" : v);
         return /[";\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
@@ -214,12 +441,17 @@
     }).join("\r\n");
   }
 
+  function formatoFecha(iso) {
+    const f = new Date(iso);
+    return isNaN(f) ? "" : f.toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
   function exportarRespuestas() {
-    const datos = [["Invitado", "Código", "Cupos", "Estado", "Personas", "Respondió", "Teléfono", "Canción", "Mensaje", "Fecha"]];
+    const datos = [["Invitado", "Cupos", "Estado", "Personas", "Respondió", "Teléfono", "Canción", "Mensaje", "Fecha", "Código"]];
     filas().forEach(function (f) {
       const r = f.respuesta || {};
-      datos.push([f.invitado.nombre, f.invitado.codigo || "", f.invitado.cupos || "", ETIQUETAS[estadoDe(f)],
-        r.asistira ? r.cantidad : 0, r.respondidoPor || "", r.telefono || "", r.cancion || "", r.mensaje || "", r.fecha ? formatoFecha(r.fecha) : ""]);
+      datos.push([f.invitado.nombre, f.invitado.cupos || "", ETIQUETAS[estadoDe(f)], r.asistira ? r.cantidad : 0,
+        r.respondidoPor || "", r.telefono || "", r.cancion || "", r.mensaje || "", r.fecha ? formatoFecha(r.fecha) : "", f.invitado.codigo || ""]);
     });
     U.descargarArchivo("respuestas-boda.csv", csv(datos), "text/csv;charset=utf-8");
   }
@@ -234,19 +466,55 @@
     U.descargarArchivo("asistentes-boda.csv", csv(datos), "text/csv;charset=utf-8");
   }
 
-  // ---------- QR para imprimir ----------
   function pintarQR() {
-    const items = [{ titulo: "Invitación general", texto: "Enlace sin nombre de invitado", url: U.urlBase(), archivo: "qr-invitacion.gif" }];
-    if (B.fotos && B.fotos.enlace) items.unshift({ titulo: B.fotos.titulo || "Comparte tus fotos", texto: "Para subir fotos del día", url: B.fotos.enlace, archivo: "qr-fotos.gif" });
+    const items = [{ titulo: "Invitación general", texto: "Abre la invitación sin nombre de invitado", url: U.urlBase(), archivo: "qr-invitacion.gif" }];
+    if (B.fotos && B.fotos.enlace) items.unshift({ titulo: "Subir fotos", texto: "Para que los invitados suban sus fotos del día", url: B.fotos.enlace, archivo: "qr-fotos.gif" });
     $("#qr-grid").innerHTML = items.map(function (q) {
       const img = U.qrImagen(q.url, 10);
-      return '<div class="qr-item"><img src="' + img + '" alt="Código QR: ' + esc(q.titulo) + '" width="220" height="220">' +
-        "<h3>" + esc(q.titulo) + "</h3><p>" + esc(q.texto) + "</p>" +
-        '<a class="boton boton-claro boton-mini" href="' + img + '" download="' + q.archivo + '">' + icono("descargar") + "<span>Descargar</span></a></div>";
+      return '<div class="qr-item"><img src="' + img + '" alt="Código QR: ' + esc(q.titulo) + '" width="160" height="160">' +
+        "<div><h4>" + esc(q.titulo) + "</h4><p>" + esc(q.texto) + "</p>" +
+        '<a class="boton boton-claro boton-mini descarga" href="' + img + '" download="' + q.archivo + '">' + icono("descargar") + "<span>Descargar</span></a></div></div>";
     }).join("");
   }
 
-  // ---------- Generador de invitados ----------
+  function pintarConexion() {
+    const el = $("#h-conexion");
+    if (modoGoogle) {
+      el.innerHTML = '<h3 class="tarjeta-titulo" data-icono="check">Conectado a Google Sheets</h3>' +
+        '<p class="texto-suave">Las respuestas de tus invitados se guardan en tu hoja de cálculo de Google. Puedes abrirla en cualquier momento desde Google Drive.</p>' +
+        '<div class="admin-fila"><button type="button" class="boton boton-claro" id="cerrar-sesion">' + icono("candado") + "<span>Cerrar sesión en este dispositivo</span></button></div>";
+      $("#cerrar-sesion").addEventListener("click", cerrarPanel);
+    } else {
+      el.innerHTML = '<h3 class="tarjeta-titulo" data-icono="enlace">Modo de prueba</h3>' +
+        '<p class="texto-suave">Ahora las respuestas solo se guardan en el navegador de quien llena el formulario, así que aquí ves únicamente las que se hicieron desde este dispositivo.</p>' +
+        '<p class="texto-suave">Para recibir las respuestas de todos tus invitados, conecta Google Sheets siguiendo el README (sección <em>"Guardar las respuestas en Google Sheets"</em>). Toma unos 10 minutos.</p>' +
+        '<div class="admin-fila"><button type="button" class="boton boton-claro" id="borrar-demo">' + icono("basura") + "<span>Borrar respuestas de prueba</span></button></div>";
+      const boton = $("#borrar-demo");
+      let confirmar = false;
+      boton.addEventListener("click", function () {
+        if (!confirmar) {
+          confirmar = true;
+          $("span", boton).textContent = "Toca otra vez para borrar";
+          boton.classList.add("peligro");
+          setTimeout(function () {
+            confirmar = false;
+            $("span", boton).textContent = "Borrar respuestas de prueba";
+            boton.classList.remove("peligro");
+          }, 4000);
+          return;
+        }
+        U.guardar(U.CLAVE_DEMO, []);
+        try {
+          Object.keys(window.localStorage).forEach(function (k) { if (k.indexOf("boda-respuesta-") === 0) window.localStorage.removeItem(k); });
+        } catch (e) { /* sin almacenamiento */ }
+        cargarDemo();
+        pintarConexion();
+        U.aviso("Respuestas de prueba borradas");
+      });
+    }
+    ponerIconosTitulos();
+  }
+
   function generar() {
     const lineas = $("#gen-entrada").value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
     const existentes = {};
@@ -271,58 +539,91 @@
 
     if (!resultado.length) {
       U.aviso("Escribe al menos un invitado");
+      $("#gen-entrada").focus();
       return;
     }
     const total = resultado.reduce(function (s, i) { return s + i.cupos; }, 0);
-    const texto = "/*\n * LISTA DE INVITADOS (generada desde admin.html)\n * " + resultado.length + " invitaciones · " + total + " cupos.\n" +
+    $("#gen-salida").value = "/*\n * LISTA DE INVITADOS (creada desde admin.html)\n * " + resultado.length + " invitaciones · " + total + " cupos.\n" +
       " * Enlace personal de cada invitado: tu-pagina/?i=CODIGO\n */\nwindow.INVITADOS = [\n" +
       resultado.map(function (i) {
         return "  { codigo: " + JSON.stringify(i.codigo) + ", nombre: " + JSON.stringify(i.nombre) + ", cupos: " + i.cupos +
           ", telefono: " + JSON.stringify(i.telefono) + " },";
       }).join("\n") + "\n];\n";
-    $("#gen-salida").value = texto;
+    $("#gen-resumen").innerHTML = "Listo: <strong>" + plural(resultado.length, "invitación", "invitaciones") + "</strong> con " + plural(total, "cupo", "cupos") + " en total.";
+    $("#gen-nombres").innerHTML = resultado.map(function (i) {
+      return "<li>" + esc(i.nombre) + " <small>" + esc(U.textoCupos(i.cupos)) + "</small></li>";
+    }).join("");
     $("#gen-resultado").hidden = false;
-    U.aviso(resultado.length + " invitaciones generadas");
   }
 
-  // ---------- Inicio ----------
+  // =================================================================
+  //  PINTAR TODO E INICIO
+  // =================================================================
+  function ponerIconosTitulos() {
+    $$("[data-icono]").forEach(function (el) {
+      if (el.querySelector(".icono")) return;
+      el.insertAdjacentHTML("afterbegin", icono(el.dataset.icono));
+    });
+  }
+
+  function pintarTodo() {
+    const lista = filas();
+    const c = contar(lista);
+    pintarInicio(lista, c);
+    pintarFiltros(c);
+    pintarInvitados(lista);
+    pintarMensajes();
+  }
+
   function iniciar() {
     $("#admin-titulo").textContent = U.nombresPareja(" & ");
     document.title = "Panel · " + U.nombresPareja(" & ");
+    $("#admin-recargar").innerHTML = icono("actualizar");
+    $("#bloqueo-icono").innerHTML = icono("candado");
+    ponerIconosTitulos();
 
-    if (R.urlGoogleScript) {
-      $("#admin-modo").textContent = "Conectado a Google Sheets";
-      $("#admin-conexion").hidden = false;
-      $("#admin-conexion").addEventListener("submit", function (e) {
-        e.preventDefault();
-        cargarGoogle($("#admin-clave").value);
-      });
-      let guardada = "";
-      try { guardada = window.sessionStorage.getItem(CLAVE_SESION) || ""; } catch (e) { guardada = ""; }
-      if (guardada) {
-        $("#admin-clave").value = guardada;
-        cargarGoogle(guardada);
-      } else {
-        estado("Escribe la clave para ver las respuestas.");
-        pintarTodo();
-      }
-    } else {
-      $("#admin-modo").textContent = "Modo demostración: configura Google Sheets para recibir respuestas reales (ver README).";
-      $("#admin-acciones-demo").hidden = false;
-      $("#admin-recargar").addEventListener("click", cargarDemo);
-      $("#admin-borrar-demo").addEventListener("click", function () {
-        if (!window.confirm("¿Borrar las respuestas de prueba guardadas en este navegador?")) return;
-        U.guardar(U.CLAVE_DEMO, []);
-        try {
-          Object.keys(window.localStorage).forEach(function (k) { if (k.indexOf("boda-respuesta-") === 0) window.localStorage.removeItem(k); });
-        } catch (e) { /* sin almacenamiento */ }
-        cargarDemo();
-      });
-      cargarDemo();
+    if (!modoGoogle) {
+      const aviso = $("#aviso-modo");
+      aviso.innerHTML = "<strong>Modo de prueba:</strong> aquí solo ves las respuestas hechas desde este dispositivo. " +
+        '<button type="button" class="enlace-boton" data-ir="herramientas">¿Cómo recibir las de todos?</button>';
+      aviso.hidden = false;
     }
 
+    // Navegación
+    window.addEventListener("hashchange", function () { pintarTodo(); mostrarPestana(); window.scrollTo(0, 0); });
+    mostrarPestana();
+
+    // Clics de toda la página
+    document.addEventListener("click", function (e) {
+      const copiar = e.target.closest("[data-copiar]");
+      if (copiar) {
+        U.copiarTexto(copiar.dataset.copiar).then(function (ok) { U.aviso(ok ? "¡Copiado!" : "No se pudo copiar"); });
+        return;
+      }
+      const ir = e.target.closest("[data-ir]");
+      if (ir) { irA(ir.dataset.ir, ir.dataset.filtroIr); return; }
+      const irFiltro = e.target.closest("[data-ir-filtro]");
+      if (irFiltro) { irA("invitados", irFiltro.dataset.irFiltro); return; }
+      const f = e.target.closest("[data-filtro]");
+      if (f) { filtro = f.dataset.filtro; pintarTodo(); return; }
+      const abrir = e.target.closest("[data-abrir]");
+      if (abrir) {
+        const det = document.getElementById(abrir.dataset.abrir);
+        det.hidden = !det.hidden;
+        abrir.setAttribute("aria-expanded", det.hidden ? "false" : "true");
+        return;
+      }
+      const enviar = e.target.closest("[data-enviar]");
+      if (enviar) {
+        const registro = enviadas();
+        registro[enviar.dataset.enviar] = new Date().toISOString();
+        U.guardar(CLAVE_ENVIADAS, registro);
+        setTimeout(pintarTodo, 300);
+      }
+    });
+
     $("#buscar").addEventListener("input", function () { pintarInvitados(filas()); });
-    $("#filtro").addEventListener("change", function () { pintarInvitados(filas()); });
+    $("#admin-recargar").addEventListener("click", recargar);
     $("#exportar-respuestas").addEventListener("click", exportarRespuestas);
     $("#exportar-asistentes").addEventListener("click", exportarAsistentes);
     $("#gen-crear").addEventListener("click", generar);
@@ -332,12 +633,22 @@
     $("#gen-descargar").addEventListener("click", function () {
       U.descargarArchivo("invitados.js", $("#gen-salida").value, "text/javascript;charset=utf-8");
     });
-    document.addEventListener("click", function (e) {
-      const b = e.target.closest("[data-copiar]");
-      if (!b) return;
-      U.copiarTexto(b.dataset.copiar).then(function (ok) { U.aviso(ok ? "¡Enlace copiado!" : "No se pudo copiar"); });
-    });
     pintarQR();
+    pintarConexion();
+
+    if (modoGoogle) {
+      $("#admin-conexion").addEventListener("submit", function (e) {
+        e.preventDefault();
+        $("#bloqueo-error").hidden = true;
+        cargarGoogle($("#admin-clave").value);
+      });
+      let guardada = "";
+      try { guardada = window.sessionStorage.getItem(CLAVE_SESION) || ""; } catch (e) { guardada = ""; }
+      pintarTodo();
+      if (guardada) cargarGoogle(guardada); else cerrarPanel();
+    } else {
+      cargarDemo();
+    }
   }
 
   iniciar();
